@@ -92,6 +92,8 @@ fly volumes create hermes_data --app fawkes-hermes --region sin --size 3 --yes
 
 ## 4. `fly.toml`
 
+> **Source of truth: the repo's [`fly.toml`](../fly.toml).** The block below is the original sketch. The live file differs: it sets `processes = ["app"]` on the service and VM, and its CMD starts the dashboard alongside the gateway, because s6 doesn't run on Fly (Appendix item 1).
+
 ```toml
 app = "fawkes-hermes"
 primary_region = "sin"
@@ -284,13 +286,58 @@ fly apps restart fawkes-hermes
 
 ## 8. Dashboard access (private network only)
 
+The dashboard is never exposed on the internet. You reach it through an encrypted WireGuard tunnel that `flyctl` opens from your laptop, and basic auth is the second layer.
+
+### 8.1 How it's protected
+
+| Layer | Control |
+|---|---|
+| Network | Port 9119 isn't under `[[services]]`, so Fly's edge doesn't route it. `fawkes-hermes.fly.dev:9119` doesn't answer. |
+| Transport | `fly proxy` tunnels over WireGuard to the app's private (6PN) address. Nothing crosses the public internet unencrypted, and the local end listens on `localhost` only. |
+| Identity | You must be authenticated to the Fly org (`fly auth login`) to open the tunnel. |
+| Application | Dashboard basic auth: `HERMES_DASHBOARD_BASIC_AUTH_USERNAME` / `_PASSWORD` / `_SECRET` (Fly secrets, set in §5). |
+
+Residual risk: other apps in the same Fly org can reach `fawkes-hermes.internal:9119` on 6PN, and basic auth is the only control against them (SECURITY_REVIEW L2). Keep the org to your own apps.
+
+### 8.2 Open it
+
 ```bash
-fly proxy 9119:9119 -a fawkes-hermes
-# open http://localhost:9119 and log in as DASH_USER / DASH_PASS
+make dashboard                         # = fly proxy 9119:9119 -a fawkes-hermes
+# in a browser on the same machine: http://localhost:9119
+# log in with the dashboard username and password from your password manager
 ```
-- Port 9119 isn't listed in `[[services]]`, so it can't be reached through `fawkes-hermes.fly.dev`. To confirm, `curl -m 5 https://fawkes-hermes.fly.dev:9119` should fail.
-- **If the proxy connects but the page hangs:** run `ss -ltnp | grep 9119` in `fly ssh console`. If it shows only `0.0.0.0`, set `HERMES_DASHBOARD_HOST = "fly-local-6pn"` and redeploy.
-- On your phone, use Telegram. Reaching the dashboard from a phone would need Tailscale or a Cloudflare Tunnel with Access via a custom image. Never add 9119 to `[[services]]`.
+- Leave the terminal running while you use it, and press Ctrl-C to close the tunnel.
+- If local port 9119 is busy (for example `make local-up` is running), pick another: `fly proxy 9120:9119 -a fawkes-hermes`, then open `http://localhost:9120`.
+- The `http://` is expected. The tunnel is already encrypted end to end, and the local end is only reachable from your own machine.
+- Don't forward it to other interfaces (`fly proxy 0.0.0.0:9119:9119`) or put it behind a tunnel you don't control.
+
+### 8.3 Verify it's private
+
+```bash
+curl -m 5 https://fawkes-hermes.fly.dev:9119 || echo "not public ✅"   # must fail or time out
+fly ips list -a fawkes-hermes                                          # no port-9119 service anywhere
+grep -n 9119 fly.toml                                                  # only in [env], never in [[services]]
+```
+Run these after every `fly.toml` change.
+
+### 8.4 Credentials
+
+- Store the username and password in your password manager. Never put them in git, chat or `.env.local` (that file is for the dev instance's separate credentials).
+- Rotate: `read -rsp "New dashboard password: " P; echo; fly secrets set HERMES_DASHBOARD_BASIC_AUTH_PASSWORD="$P" HERMES_DASHBOARD_BASIC_AUTH_SECRET="$(openssl rand -hex 32)" -a fawkes-hermes; unset P`. The restart that follows invalidates existing sessions.
+- Rotate right away if the password was shown in a terminal that's logged or shared.
+
+### 8.5 Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `fly proxy` connects but the page hangs | Run `ss -ltnp \| grep 9119` in `make ssh`. If it shows only `0.0.0.0`, set `HERMES_DASHBOARD_HOST = "fly-local-6pn"` in `fly.toml` and redeploy. |
+| `bind: address already in use` | Another process holds 9119. Use a different local port (8.2). |
+| Login fails or the dashboard won't start | Check the `HERMES_DASHBOARD_BASIC_AUTH_*` secret names with `make secrets`. |
+| Proxy errors or timeouts | Check `make status` (machine started) and `fly auth whoami`. |
+
+### 8.6 Phone or shared access
+
+Use Telegram from a phone. If you later need the dashboard on a phone, use a private overlay such as Tailscale, or Cloudflare Tunnel with Access, which needs a custom image or sidecar and is a new design item (add it to §15 and SECURITY_REVIEW first). **Never** add 9119 to `[[services]]`, and never use `fly proxy` bound to a public interface.
 
 ---
 
@@ -543,13 +590,15 @@ Hermes re-registers the webhook on restart. Confirm with `getWebhookInfo` (§6.2
 
 ## Appendix: verify these on your first deploy
 
-1. `[processes] app = "gateway run"` starts the gateway through the image's s6 entrypoint, and the dashboard also comes up.
-2. The entrypoint handles a fresh root-owned volume at `/opt/data`. If it doesn't, run the `chown` fix from §16 once.
-3. The Telegram webhook server listens on `0.0.0.0:8443`, so Fly's edge can reach it.
+Results from the first deploy on 2026-11-08 (v0.23.0) are marked ✅, ❌ or 🔎.
+
+1. ❌→✅ **s6 does not run on Fly.** `/fly/init` is PID 1, so the entrypoint logs "not PID 1 … supervised services are unavailable" and runs only the CMD. With `app = "gateway run"` the dashboard never started. **Fix (in the repo's `fly.toml`):** the CMD is `sh -c '<dashboard restart loop> & exec hermes gateway run'`. The image's `main-wrapper.sh` drops it to `hermes`, and the gateway runs in the foreground, so if it exits the machine restarts. Both processes were confirmed running as UID 10000.
+2. ✅ A fresh volume is bootstrapped and owned by `hermes:hermes` (`/opt/data` mode 700, `.env` mode 600).
+3. ✅ The webhook listens on `0.0.0.0:8443`, and the log shows `[Telegram] Connected to Telegram (webhook mode)`. Other listeners: the dashboard on 9119 (private network), Hermes's own loopback API server on `127.0.0.1:8642` (with an auto-generated `API_SERVER_KEY`), and Fly SSH on 22 (private network).
 4. Hermes registers the webhook itself on startup (`getWebhookInfo` shows your URL).
 5. Unauthenticated POSTs to the webhook path return 4xx (§6.3).
-6. `HERMES_DASHBOARD_HOST = "::"` is reachable through `fly proxy`.
-7. `git` and `ssh` exist in the image.
+6. 🔎 The dashboard reports `HERMES_DASHBOARD_READY port=9119` and is unreachable at `https://fawkes-hermes.fly.dev:9119` ✅. Still to check: login through `make dashboard`.
+7. ✅ `git`, `ssh`, `node` and `npx` exist in the image (no HTTPS fallback needed for skills sync).
 8. `fly ssh console` from GitHub Actions works with an app-scoped deploy token.
 
 **References:** Hermes docs (hermes-agent.nousresearch.com/docs): Telegram, Docker, Security, Skills, Cron · fly.io/pricing · core.telegram.org/bots/api (setWebhook, getWebhookInfo) · OpenRouter provider-routing docs.
