@@ -16,7 +16,7 @@ services:
       HERMES_DASHBOARD_PORT: "9119"
       HERMES_DASHBOARD_HOST: "0.0.0.0"   # inside the container only; the host binds 127.0.0.1 below
     ports:
-      - "127.0.0.1:9119:9119"
+      - "127.0.0.1:9120:9119"   # 9120 locally, so it never clashes with `make dashboard` (prod tunnel on 9119)
     volumes:
       - hermes_local_data:/opt/data
       - ./skills:/opt/data/skills-repo:ro   # live-edit skills locally; same path as production
