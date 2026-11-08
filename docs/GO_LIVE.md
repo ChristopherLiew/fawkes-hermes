@@ -1,10 +1,35 @@
 # Go-live runbook: initialization and CI/CD
 
-A one-time, ordered path from this repo to a running `hermes-me` with CI/CD wired up. Each step says what to do and how to confirm it worked. Reference material: [DESIGN.md](DESIGN.md) (the why and the details), [CICD.md](CICD.md) (day-to-day flow), [SECURITY_REVIEW.md](SECURITY_REVIEW.md) (the gate).
+A one-time, ordered path from this repo to a running `fawkes-hermes` with CI/CD wired up. Each step says what to do and how to confirm it worked. Reference material: [DESIGN.md](DESIGN.md) (the why and the details), [CICD.md](CICD.md) (day-to-day flow), [SECURITY_REVIEW.md](SECURITY_REVIEW.md) (the gate).
 
 Steps marked 👤 need you, because they involve a browser login, BotFather or a password manager. Everything else can be pasted as-is.
 
 ---
+
+## Credentials inventory (all of them)
+
+**Never paste a value into chat, a doc or a commit.** Each one goes from its source straight into your password manager, then into Fly or GitHub using the commands in the step listed.
+
+| # | Credential | Required? | Create it at | Stored in | Step |
+|---|---|---|---|---|---|
+| 1 | Fly account login | ✅ | `fly auth login` (browser) | Laptop keychain | 0 |
+| 2 | GitHub CLI login | ✅ (done) | `gh auth login` | Laptop keychain | 0 |
+| 3 | `TELEGRAM_BOT_TOKEN`, a **new** prod token | ✅ | @BotFather (revoke the v1 token) | Fly secret | 2, 5 |
+| 4 | `TELEGRAM_ALLOWED_USERS`, your numeric ID | ✅ | @userinfobot | Fly secret | 2, 5 |
+| 5 | `TELEGRAM_WEBHOOK_SECRET` | ✅ | Generated: `openssl rand -hex 32` | Fly secret | 5 |
+| 6 | Webhook path (inside `TELEGRAM_WEBHOOK_URL`) | ✅ | Generated: `/tg-$(openssl rand -hex 12)` | Fly secret + password manager | 5 |
+| 7 | `OPENROUTER_API_KEY`, with a credit limit | ✅ | openrouter.ai → Keys | Fly secret | 3, 5 |
+| 8 | Dashboard `…_BASIC_AUTH_USERNAME` / `…_PASSWORD` / `…_SECRET` | ✅ | You choose / `openssl rand` | Fly secrets | 5 |
+| 9 | `FLY_API_TOKEN`, deploy scope, 90 days | ✅ | `fly tokens create deploy -a fawkes-hermes -x 2160h` | GitHub → env `production` (piped, never shown) | 8.3 |
+| 10 | Skills deploy key (ed25519, read-only) | ✅ | `ssh-keygen`; public half via `gh repo deploy-key add` | Private half: `/opt/data/.ssh` (root, mode 600) only | 8.1 |
+| 11 | Backup age key pair | ✅ | `age-keygen` | Password manager (public key in `make backup`) | 9 |
+| 12 | Web-search backend key | Depends | Whatever `hx tools` asks for (e.g. Nous Portal) | Fly secret / `hx` | 7 |
+| 13 | `TELEGRAM_GROUP_ALLOWED_CHATS` | Optional | Group ID (starts with `-`) | Fly secret | 5 |
+| 14 | `GH_PAT` for the GitHub MCP (fine-grained, read-only) | Optional | github.com → Settings → Developer settings | Fly secret | DESIGN §11 |
+| 15 | Dev bot token + dev OpenRouter key | Optional | @BotFather / OpenRouter | `.env.local` (gitignored) | `make local-up` |
+| 16 | `MODAL_TOKEN_ID` / `_SECRET` | Optional (friends app) | modal.com | Fly secret on the friends app | DESIGN §12 |
+
+Claude (or any agent working in this repo) needs **none** of these values. It only needs you to have run the logins in #1–2. You type secrets at hidden `read -s` prompts or pipe them between CLIs.
 
 ## 0. Tools and logins 👤
 
@@ -53,8 +78,8 @@ Create a dedicated key with a **credit limit** (for example $15/month). Create a
 ## 4. Fly app, volume and `fly.toml` (DESIGN §3–4)
 
 ```bash
-fly apps create hermes-me
-fly volumes create hermes_data --app hermes-me --region sin --size 3 --yes
+fly apps create fawkes-hermes
+fly volumes create hermes_data --app fawkes-hermes --region sin --size 3 --yes
 make image-digest VERSION=v0.23.0      # use the newest plain vX.Y.Z tag
 ```
 Create `fly.toml` from DESIGN §4 and paste in the `image = "…@sha256:…"` line. Then:
@@ -64,7 +89,7 @@ git add fly.toml && git commit -m "Add fly.toml pinned to vX.Y.Z" && git push -u
 gh pr create --fill && gh pr merge --squash --auto
 git switch main && git pull
 ```
-✅ `ci` passes, including `fly.toml image pin`, and `fly volumes list -a hermes-me` shows `hermes_data` in `sin`.
+✅ `ci` passes, including `fly.toml image pin`, and `fly volumes list -a fawkes-hermes` shows `hermes_data` in `sin`.
 
 ## 5. Secrets 👤 (DESIGN §5)
 
@@ -76,11 +101,11 @@ Run the `read -rsp …` / `fly secrets set --stage …` block from DESIGN §5 ex
 
 ```bash
 make deploy                 # lint → check-image → fly deploy --ha=false → status
-fly scale count 1 --yes -a hermes-me
+fly scale count 1 --yes -a fawkes-hermes
 make logs                   # wait for: [telegram] Connected to Telegram (webhook mode)
-make webhook-info           # url = https://hermes-me.fly.dev/tg-…, no last_error_message
+make webhook-info           # url = https://fawkes-hermes.fly.dev/tg-…, no last_error_message
 make webhook-test           # must print "OK: 4xx"
-curl -m 5 https://hermes-me.fly.dev:9119 || echo "dashboard not public ✅"
+curl -m 5 https://fawkes-hermes.fly.dev:9119 || echo "dashboard not public ✅"
 ```
 ✅ All of the above pass, and the bot replies to your DM. A "set up a model" error is fine at this point.
 
@@ -104,10 +129,10 @@ make restart
 **8.1 Deploy key** (DESIGN §9.2–9.3):
 ```bash
 ssh-keygen -t ed25519 -C "hermes-skills-deploy" -f ~/.ssh/hermes_skills_deploy -N ""
-gh repo deploy-key add ~/.ssh/hermes_skills_deploy.pub --title hermes-me-skills   # read-only by default
-fly ssh console -a hermes-me -C "mkdir -p /opt/data/.ssh"
-fly ssh sftp shell -a hermes-me        # » put ~/.ssh/hermes_skills_deploy /opt/data/.ssh/skills_deploy
-fly ssh console -a hermes-me -C "sh -c 'chown -R root:root /opt/data/.ssh && chmod 700 /opt/data/.ssh && chmod 600 /opt/data/.ssh/skills_deploy'"
+gh repo deploy-key add ~/.ssh/hermes_skills_deploy.pub --title fawkes-hermes-skills   # read-only by default
+fly ssh console -a fawkes-hermes -C "mkdir -p /opt/data/.ssh"
+fly ssh sftp shell -a fawkes-hermes        # » put ~/.ssh/hermes_skills_deploy /opt/data/.ssh/skills_deploy
+fly ssh console -a fawkes-hermes -C "sh -c 'chown -R root:root /opt/data/.ssh && chmod 700 /opt/data/.ssh && chmod 600 /opt/data/.ssh/skills_deploy'"
 rm -P ~/.ssh/hermes_skills_deploy ~/.ssh/hermes_skills_deploy.pub
 ```
 
@@ -120,7 +145,7 @@ Then confirm inside `make ssh`: `hx skills list` shows `research-brief`, and `ls
 
 **8.3 Give CI its token.** The token is piped straight into GitHub and never shown:
 ```bash
-fly tokens create deploy -a hermes-me -x 2160h | gh secret set FLY_API_TOKEN --env production
+fly tokens create deploy -a fawkes-hermes -x 2160h | gh secret set FLY_API_TOKEN --env production
 ```
 Add a calendar reminder to rotate it in about 85 days.
 

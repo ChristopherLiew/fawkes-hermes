@@ -16,11 +16,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: fly-hermes-me # shared with deploy-skills: never sync and deploy at the same time
+  group: fly-fawkes-hermes # shared with deploy-skills: never sync and deploy at the same time
   cancel-in-progress: false
 
 env:
-  FLY_APP: hermes-me
+  FLY_APP: fawkes-hermes
 
 jobs:
   verify:

@@ -1,6 +1,6 @@
 # Skills
 
-This directory holds the procedures the Hermes agent (`hermes-me`) loads on demand. Each subdirectory is one skill, in the [Hermes SKILL.md format](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills). Merging to `main` publishes this directory to the machine, read-only.
+This directory holds the procedures the Hermes agent (`fawkes-hermes`) loads on demand. Each subdirectory is one skill, in the [Hermes SKILL.md format](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills). Merging to `main` publishes this directory to the machine, read-only.
 
 > Writing or editing a skill, as a human or an AI agent? Follow **[AGENTS.md](AGENTS.md)**: format, style rules and the validation gate.
 

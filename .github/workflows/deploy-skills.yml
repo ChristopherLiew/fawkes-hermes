@@ -15,11 +15,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: fly-hermes-me # shared with deploy-infra: never sync and deploy at the same time
+  group: fly-fawkes-hermes # shared with deploy-infra: never sync and deploy at the same time
   cancel-in-progress: false # never interrupt a sync halfway
 
 env:
-  FLY_APP: hermes-me
+  FLY_APP: fawkes-hermes
 
 jobs:
   validate:
@@ -40,8 +40,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: FLY_API_TOKEN configured?
+        id: token
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          if [ -n "$FLY_API_TOKEN" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else
+            echo "::warning::FLY_API_TOKEN is not set in the production environment yet (GO_LIVE step 8.3); skipping sync"
+            echo "ok=false" >> "$GITHUB_OUTPUT"; fi
       - uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
+        if: steps.token.outputs.ok == 'true'
       - name: Sync skills (script streamed in; never stored on the volume)
+        if: steps.token.outputs.ok == 'true'
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           REPO: git@github.com:${{ github.repository }}.git
@@ -50,6 +60,7 @@ jobs:
           B64=$( { printf 'REPO=%s\nREF=%s\n' "$REPO" "$REF"; cat scripts/sync-skills.sh; } | base64 -w0 )
           flyctl ssh console -a "$FLY_APP" -C "sh -c \"echo $B64 | base64 -d | sh\""
       - name: Verify published revision
+        if: steps.token.outputs.ok == 'true'
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
