@@ -60,6 +60,18 @@ Revisit if you upgrade to Pro, or before adding any collaborator.
 ### M2. Unpinned `npx -y` MCP server runs with a PAT in its env ✅ fixed in design
 **Where:** DESIGN §11.1. **Fix applied:** pin an exact version, use a read-only fine-grained PAT, and check the package is still maintained.
 
+### M5. Travel skills: third-party data and API keys in the agent's reach ✅ accepted, mitigated
+**Where:** [TRAVEL_SKILLS.md](TRAVEL_SKILLS.md), DESIGN §11.2.
+**Risk:**
+- The Kiwi.com MCP server, LTA, NEA and Open-Meteo responses enter the model's context. Kiwi's own tool description already tries to steer the output format.
+- `LTA_DATAMALL_KEY` and `DATA_GOV_SG_API_KEY` are readable by the agent (H2), and so could be exfiltrated if it's injected.
+
+**Mitigation:**
+- Every skill treats tool and web output as data, and `flights` explicitly ignores the tool's formatting instructions.
+- Kiwi is filtered to `search-flight` only, and the skills never book, sign in or enter details.
+- Both keys are free, read-only and rate-limited, and rotate in minutes with `make skill-secrets`.
+- Scripts are stdlib-only, read-only on the machine, send keys only as headers (never in URLs or errors), and write only to the per-user cache dir. Tests enforce this.
+
 ### M3. Backups contain secrets and were handled in plaintext ✅ fixed in design
 **Where:** DESIGN §14.
 **Issue:** The tarball includes `/opt/data/.env` and config. It was written with a world-readable umask to `/tmp`, downloaded into the current directory (possibly this repo), and the guide said "store encrypted" without saying how.

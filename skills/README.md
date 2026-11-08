@@ -9,8 +9,14 @@ This directory holds the procedures the Hermes agent (`fawkes-hermes`) loads on 
 | Skill | Category | What it does |
 |---|---|---|
 | [`research-brief`](research-brief/SKILL.md) | research | Daily news brief per topic: deduped, cited bullets. Built for cron. |
+| [`sg-bus`](sg-bus/SKILL.md) | travel | Singapore bus arrivals, stop lookup and MRT alerts (LTA DataMall). Needs `LTA_DATAMALL_KEY`. |
+| [`weather`](weather/SKILL.md) | travel | NEA forecasts for Singapore, Open-Meteo elsewhere. Optional `DATA_GOV_SG_API_KEY`. |
+| [`itinerary`](itinerary/SKILL.md) | travel | Day-by-day trip plans with timed legs, costs, rain plans and sources. |
+| [`flights`](flights/SKILL.md) | travel | Compares and ranks flights via the Kiwi.com MCP. Research only; never books. |
 
 Keep this table in sync when you add or remove a skill.
+
+The travel skills' spec, secrets and Kiwi MCP setup are in [docs/TRAVEL_SKILLS.md](../docs/TRAVEL_SKILLS.md). Script tests live in [`tests/`](../tests) (`make test`).
 
 ## How Hermes uses these files
 

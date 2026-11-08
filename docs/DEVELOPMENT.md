@@ -48,7 +48,8 @@ There is no application code, so the tests are:
 |---|---|---|
 | Secret scan | `make scan` | Full history and working tree |
 | Hooks | `make lint` | Forbidden files, private keys, large files, merge markers, co-author trailers |
-| Skills and scripts | `make skills-check` | `validate_skills.py` plus shellcheck on scripts |
+| Skills and scripts | `make skills-check` | `validate_skills.py`, the skill tests (`tests/`, fixtures only) and shellcheck |
+| Skill APIs (optional) | `make test-live` | The same tests plus real API calls, keys from `.env.local` |
 | Image pin | `make check-image` | `fly.toml` uses `vX.Y.Z@sha256:…` |
 
 For a validator change, also run it against a deliberately broken skill directory (`python3 scripts/validate_skills.py <dir>`) and confirm it fails.

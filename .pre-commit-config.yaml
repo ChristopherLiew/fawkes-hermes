@@ -38,6 +38,12 @@ repos:
         language: system
         pass_filenames: false
         files: ^skills/
+      - id: skill-tests
+        name: skill tests (stdlib unittest, fixtures only)
+        entry: python3 -m unittest discover -s tests
+        language: system
+        pass_filenames: false
+        files: ^(skills|tests|scripts/validate_skills\.py)
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0

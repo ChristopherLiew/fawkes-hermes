@@ -16,7 +16,7 @@ A monorepo for one personal Hermes Agent (`nousresearch/hermes-agent`) on Fly.io
   - `docs/DESIGN.md`: reference
   - `docs/SECURITY_REVIEW.md`: threat model
 
-There is no application code. The "tests" are the secret scan, the skills validator and shellcheck.
+There is no application code. The tests are the secret scan, the skills validator, shellcheck and the skill script tests in `tests/` (stdlib `unittest`, recorded fixtures; `docs/TRAVEL_SKILLS.md`).
 
 ## Commands
 
@@ -30,6 +30,9 @@ make image-digest VERSION=vX.Y.Z     # tag@digest line for fly.toml via the Dock
 gh workflow run deploy-infra -f version=vX.Y.Z   # infra deploy from GitHub (manual dispatch)
 make deploy                          # CLI fallback: lint → check-image → fly deploy --ha=false
 make sync-skills [REF=<sha>]         # stream scripts/sync-skills.sh to the machine as root
+make test | test-live                # skill tests: fixtures only | plus live APIs (SKILLS_LIVE=1, keys from .env.local)
+python3 -m unittest discover -s tests -p test_sg_bus.py -v   # one test module
+make skill-secrets                   # pipe skill API keys from .env.local to Fly secrets (restarts the machine)
 make status | logs | ssh | dashboard # ssh = root; run hermes as the hermes user via `hx` (DESIGN §7.1)
 make local-up | local-hx ARGS="…" | local-down   # optional local instance (Docker, dev bot)
 ```

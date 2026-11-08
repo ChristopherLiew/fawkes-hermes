@@ -6,7 +6,8 @@ ERRORS (block the commit or CI run):
   - name is kebab-case, matches the directory name, and is unique; version is semver
   - description is at most 160 chars and the body is not empty
   - platforms (if set) only uses macos | linux | windows
-  - relative files the body links to (references/, templates/, ...) exist
+  - relative files the body links to (references/, templates/, ...) exist, including ${HERMES_SKILL_DIR}/... paths
+  - no hardcoded ~/.hermes paths (use ${HERMES_SKILL_DIR}; Hermes expands it at load time)
   - no symlinks, no file over 256 KiB, no loose files in skills/ except README.md, AGENTS.md, CLAUDE.md
 WARNINGS (advisory, mirroring the Hermes skill linter):
   - description over 60 chars (keeps the level-0 skills_list index lean)
@@ -34,6 +35,7 @@ SUBDIRS = {"references", "templates", "scripts", "examples", "assets"}
 SECTIONS = ("When to Use", "Procedure", "Pitfalls", "Verification")
 TOP_LEVEL_FILES = {"README.md", "AGENTS.md", "CLAUDE.md"}
 LINK_RE = re.compile(r"(?<![\w/.-])((?:%s)/[\w./-]+)" % "|".join(sorted(SUBDIRS)))
+SKILL_DIR_RE = re.compile(r"\$\{HERMES_SKILL_DIR\}/([\w./-]+)")
 
 
 def parse_frontmatter(text: str) -> tuple[dict[str, str], str] | None:
@@ -102,7 +104,9 @@ def check_skill(d: Path, errors: list[str], warnings: list[str], seen: dict[str,
         if section.lower() not in headings:
             warnings.append(f"{skill}: missing recommended section '## {section}'")
 
-    for ref in sorted(set(LINK_RE.findall(body))):
+    if "~/.hermes" in body:
+        errors.append(f"{skill}: hardcoded ~/.hermes path; use ${{HERMES_SKILL_DIR}}/...")
+    for ref in sorted(set(LINK_RE.findall(body)) | set(SKILL_DIR_RE.findall(body))):
         ref = ref.rstrip(".,);:")
         if not (d / ref).exists():
             errors.append(f"{skill}: references '{ref}' but {d / ref} does not exist")

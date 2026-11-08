@@ -1,0 +1,119 @@
+{
+ "code": 0,
+ "data": {
+  "records": [
+   {
+    "date": "2026-11-08",
+    "timestamp": "2026-11-08T23:32:00+08:00",
+    "updatedTimestamp": "2026-11-08T23:41:22+08:00",
+    "forecasts": [
+     {
+      "day": "Monday",
+      "timestamp": "2026-11-09T00:00:00+08:00",
+      "forecast": {
+       "code": "TL",
+       "text": "Thundery Showers",
+       "summary": "Early hours and Afternoon thundery showers"
+      },
+      "temperature": {
+       "high": 33,
+       "low": 24,
+       "unit": "Degrees Celsius"
+      },
+      "relativeHumidity": {
+       "high": 95,
+       "low": 60,
+       "unit": "Percentage"
+      },
+      "wind": {
+       "direction": "NNE",
+       "speed": {
+        "low": 5,
+        "high": 15
+       }
+      }
+     },
+     {
+      "day": "Tuesday",
+      "timestamp": "2026-11-10T00:00:00+08:00",
+      "forecast": {
+       "code": "TL",
+       "text": "Thundery Showers",
+       "summary": "Afternoon thundery showers"
+      },
+      "temperature": {
+       "high": 33,
+       "low": 24,
+       "unit": "Degrees Celsius"
+      },
+      "relativeHumidity": {
+       "high": 95,
+       "low": 60,
+       "unit": "Percentage"
+      },
+      "wind": {
+       "direction": "VARIABLE",
+       "speed": {
+        "low": 5,
+        "high": 15
+       }
+      }
+     },
+     {
+      "day": "Wednesday",
+      "timestamp": "2026-11-11T00:00:00+08:00",
+      "forecast": {
+       "code": "TL",
+       "text": "Thundery Showers",
+       "summary": "Afternoon thundery showers"
+      },
+      "temperature": {
+       "high": 34,
+       "low": 24,
+       "unit": "Degrees Celsius"
+      },
+      "relativeHumidity": {
+       "high": 95,
+       "low": 60,
+       "unit": "Percentage"
+      },
+      "wind": {
+       "direction": "VARIABLE",
+       "speed": {
+        "low": 5,
+        "high": 15
+       }
+      }
+     },
+     {
+      "day": "Thursday",
+      "timestamp": "2026-11-12T00:00:00+08:00",
+      "forecast": {
+       "code": "TL",
+       "text": "Thundery Showers",
+       "summary": "Afternoon thundery showers"
+      },
+      "temperature": {
+       "high": 34,
+       "low": 24,
+       "unit": "Degrees Celsius"
+      },
+      "relativeHumidity": {
+       "high": 95,
+       "low": 60,
+       "unit": "Percentage"
+      },
+      "wind": {
+       "direction": "VARIABLE",
+       "speed": {
+        "low": 5,
+        "high": 15
+       }
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "errorMsg": ""
+}

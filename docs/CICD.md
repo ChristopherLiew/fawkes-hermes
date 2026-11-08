@@ -40,8 +40,8 @@ Repo: `ChristopherLiew/fawkes-hermes` (private, GitHub Free). Fly app: `fawkes-h
 
 | File | Runs on | Secrets | Does |
 |---|---|---|---|
-| `ci.yml` | Every PR and push to `main` | none | Checksum-pinned gitleaks: all hooks plus a full-history scan. Validates skills, shellchecks the sync script, runs `make check-image` (once `fly.toml` exists), rejects `Co-Authored-By` |
-| `deploy-skills.yml` | Push to `main` touching `skills/**`, the sync script or the workflow; `workflow_dispatch` | `FLY_API_TOKEN` | validate → stream `sync-skills.sh` with `REF=$GITHUB_SHA` → check `.revision` matches |
+| `ci.yml` | Every PR and push to `main` | none | Checksum-pinned gitleaks: all hooks plus a full-history scan. Validates skills, runs the skill tests (`tests`, stdlib unittest with fixtures, no keys), shellchecks the sync script, runs `make check-image` (once `fly.toml` exists), rejects `Co-Authored-By` |
+| `deploy-skills.yml` | Push to `main` touching `skills/**`, `tests/**`, the sync script or the workflow; `workflow_dispatch` | `FLY_API_TOKEN` | validate + tests → stream `sync-skills.sh` with `REF=$GITHUB_SHA` → check `.revision` matches |
 | `deploy-infra.yml` | `workflow_dispatch` only, from `main`, input `version` | `FLY_API_TOKEN` | `check-image` + typed version equals the `fly.toml` tag → `flyctl deploy --ha=false` → assert exactly one started machine running the pinned digest → advisory log check for "Connected to Telegram" |
 | `dependabot.yml` | Monthly | none | **Alert-only** PRs for action updates. Never merge them; run `make adopt-pr PR=<n>` (sole-author policy) |
 
@@ -55,7 +55,8 @@ Both deploy workflows share the concurrency group `fly-fawkes-hermes`, so a skil
 make setup          # once per clone: pre-commit, pre-push and commit-msg hooks
 make lint           # every hook on every file
 make scan           # gitleaks: history + working tree
-make skills-check   # skills validator + shellcheck
+make skills-check   # skills validator + skill tests + shellcheck
+make test-live      # optional: skill tests plus live API calls (keys from .env.local)
 ```
 A commit is blocked if it contains a secret, a forbidden file, an invalid skill or a `Co-Authored-By` trailer. Pushes are blocked if gitleaks finds anything in the history. Don't skip the hooks with `--no-verify`.
 

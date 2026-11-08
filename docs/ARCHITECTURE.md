@@ -48,6 +48,7 @@ One personal Hermes Agent (the prebuilt `nousresearch/hermes-agent` image) runs 
 ## Data flows
 
 - **Message:** Telegram POST, then secret and allowlist check, then the agent loop (model calls through OpenRouter), then the reply. Session and memory writes go to the volume.
+- **Skill API calls:** skill scripts run in the agent's `terminal` sandbox and call LTA DataMall, data.gov.sg and Open-Meteo directly, with the keys Hermes passes through from `required_environment_variables`. The `flights` skill calls the remote Kiwi.com MCP server (`mcp_kiwi_search_flight`). All of these responses are untrusted input to the model.
 - **Cron:** the ticker inside the gateway fires jobs stored in agent state. They start with no chat history and approvals default to deny, so skills must be self-contained.
 - **Skills release:** merge to `main`, then `ci` and `deploy-skills`. The workflow validates, streams `sync-skills.sh` over `fly ssh` with `REF=$GITHUB_SHA`, and checks `/opt/data/skills-repo/.revision` matches. The script fetches into `/root`, publishes only `skills/`, and swaps it in with an atomic rename.
 - **Infra release:** PR bumps the `fly.toml` pin, then `ci` checks it, then a person runs `deploy-infra` with the typed version, which runs `fly deploy --ha=false` and asserts one started machine on the pinned digest.

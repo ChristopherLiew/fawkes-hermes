@@ -1,0 +1,81 @@
+{
+ "odata.metadata": "https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival",
+ "BusStopCode": "83139",
+ "Services": [
+  {
+   "ServiceNo": "155",
+   "Operator": "SBST",
+   "NextBus": {
+    "EstimatedArrival": "2024-08-14T16:45:23+08:00",
+    "Monitored": 1,
+    "Load": "SDA",
+    "Feature": "WAB",
+    "Type": "DD"
+   },
+   "NextBus2": {
+    "EstimatedArrival": "2024-08-14T16:53:50+08:00",
+    "Monitored": 1,
+    "Load": "LSD",
+    "Feature": "",
+    "Type": "BD"
+   },
+   "NextBus3": {
+    "EstimatedArrival": "",
+    "Monitored": 0,
+    "Load": "",
+    "Feature": "",
+    "Type": ""
+   }
+  },
+  {
+   "ServiceNo": "15",
+   "Operator": "GAS",
+   "NextBus": {
+    "EstimatedArrival": "2024-08-14T16:41:48+08:00",
+    "Monitored": 1,
+    "Load": "SEA",
+    "Feature": "WAB",
+    "Type": "SD"
+   },
+   "NextBus2": {
+    "EstimatedArrival": "2024-08-14T16:49:22+08:00",
+    "Monitored": 1,
+    "Load": "SEA",
+    "Feature": "WAB",
+    "Type": "SD"
+   },
+   "NextBus3": {
+    "EstimatedArrival": "2024-08-14T17:06:11+08:00",
+    "Monitored": 1,
+    "Load": "SEA",
+    "Feature": "WAB",
+    "Type": "SD"
+   }
+  },
+  {
+   "ServiceNo": "150",
+   "Operator": "SBST",
+   "NextBus": {
+    "EstimatedArrival": "2024-08-14T16:55:22+08:00",
+    "Monitored": 0,
+    "Load": "SEA",
+    "Feature": "WAB",
+    "Type": "SD"
+   },
+   "NextBus2": {
+    "EstimatedArrival": "2024-08-14T17:15:22+08:00",
+    "Monitored": 0,
+    "Load": "SEA",
+    "Feature": "WAB",
+    "Type": "SD"
+   },
+   "NextBus3": {
+    "EstimatedArrival": "",
+    "Monitored": 0,
+    "Load": "",
+    "Feature": "",
+    "Type": ""
+   }
+  }
+ ]
+}
