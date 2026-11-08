@@ -15,6 +15,7 @@ secrets/
 hermes-backup-*.tgz
 *.tgz
 *.tar.gz
+*.age
 
 # --- Fly local state ---
 .fly/

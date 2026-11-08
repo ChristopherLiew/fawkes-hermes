@@ -67,7 +67,7 @@ fly auth login
 | Webhook path and secret | Generated in §5 |
 
 ### 1.4 Pin a Hermes version
-Pick the newest `X.Y.Z` tag at hub.docker.com/r/nousresearch/hermes-agent/tags. This guide calls it `<VERSION>`. **Never deploy `latest`.**
+Pick the newest `X.Y.Z` tag at hub.docker.com/r/nousresearch/hermes-agent/tags. This guide calls it `<VERSION>`. **Never deploy `latest`.** Tags can be moved, so pin the digest as well: `image = "nousresearch/hermes-agent:<VERSION>@sha256:<DIGEST>"`. Get the digest with `docker buildx imagetools inspect nousresearch/hermes-agent:<VERSION>`.
 
 ---
 
@@ -320,50 +320,66 @@ cat ~/.ssh/hermes_skills_deploy.pub
 ```
 Then in GitHub: `hermes-skills` → Settings → Deploy keys → Add. **Leave "Allow write access" unchecked.**
 
-### 9.3 Put the key and the sync script on the volume (root-only)
+### 9.3 Put the key on the volume (root-only); keep the sync script OFF the volume
+
+> **Security rule (see [SECURITY_REVIEW.md](SECURITY_REVIEW.md) H1):** `/opt/data` is owned by the
+> agent (UID 10000), so the agent can rename or replace anything inside it, including root-owned
+> subdirectories. Anything that **root executes or trusts** must therefore not live on the volume.
+> Earlier drafts kept `bin/sync-skills.sh` and a persistent `.git/` on the volume. A prompt-injected
+> agent could swap the script, or add `core.fsmonitor` to `.git/config`, and get root on the next sync.
+> The script below runs from the skills repo, clones fresh into root-only temp space every time, and
+> publishes a **root-owned, read-only** copy with no `.git/`.
+
 ```bash
-fly ssh console -a hermes-me -C "mkdir -p /opt/data/.ssh /opt/data/bin"
+fly ssh console -a hermes-me -C "mkdir -p /opt/data/.ssh"
 fly ssh sftp shell -a hermes-me
 » put /Users/<you>/.ssh/hermes_skills_deploy /opt/data/.ssh/skills_deploy
 » exit
+fly ssh console -a hermes-me -C "sh -c 'chown -R root:root /opt/data/.ssh && chmod 700 /opt/data/.ssh && chmod 600 /opt/data/.ssh/skills_deploy'"
+
+# The key now exists only on the server; remove the local copy (or move it into your password manager)
+rm -P ~/.ssh/hermes_skills_deploy
 ```
-Then, inside `fly ssh console -a hermes-me`:
-```bash
-chmod 700 /opt/data/.ssh
-chown root:root /opt/data/.ssh/skills_deploy && chmod 600 /opt/data/.ssh/skills_deploy
+`which git ssh` inside `fly ssh console` must show both; otherwise use the HTTPS fallback below.
 
-# Pin GitHub's host key (verify it at
-# https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints)
-echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' \
-  > /opt/data/.ssh/known_hosts
-
-cat > /opt/data/bin/sync-skills.sh <<'EOF'
+Commit this as `scripts/sync-skills.sh` **in the `hermes-skills` repo**:
+```sh
 #!/bin/sh
-# Runs as root via `fly ssh console`. The deploy key stays root-only,
-# so the agent (UID 10000) can never read it.
+# Runs as root, streamed in via `fly ssh console` (never stored on the volume).
+# Trusts nothing under /opt/data except the key file, which it validates first.
 set -eu
+umask 077
 REPO=git@github.com:<YOUR_GH_USER>/hermes-skills.git
-DIR=/opt/data/skills-repo
-chown root:root /opt/data/.ssh /opt/data/.ssh/skills_deploy
-chmod 700 /opt/data/.ssh; chmod 600 /opt/data/.ssh/skills_deploy
-export GIT_SSH_COMMAND="ssh -i /opt/data/.ssh/skills_deploy -o IdentitiesOnly=yes \
-  -o UserKnownHostsFile=/opt/data/.ssh/known_hosts -o StrictHostKeyChecking=yes"
-G="git -c safe.directory=$DIR"
-if [ -d "$DIR/.git" ]; then
-  $G -C "$DIR" fetch --quiet origin main
-  $G -C "$DIR" reset --hard --quiet origin/main
-  $G -C "$DIR" clean -fdq
-else
-  git clone --quiet --branch main "$REPO" "$DIR"
-fi
-chown -R 10000:10000 "$DIR"
-chmod -R a-w "$DIR"   # the agent can read but not edit; root resets it on the next sync
-echo "skills synced @ $($G -C "$DIR" rev-parse --short HEAD)"
-EOF
-chmod 700 /opt/data/bin/sync-skills.sh
+KEY=/opt/data/.ssh/skills_deploy
+DEST=/opt/data/skills-repo
 
-which git ssh                 # both must exist (HTTPS fallback below if not)
-/opt/data/bin/sync-skills.sh
+# The key must be a root-owned regular file, not a symlink, with mode 600.
+[ -f "$KEY" ] && [ ! -L "$KEY" ] || { echo "bad key path" >&2; exit 1; }
+[ "$(stat -c '%u %a' "$KEY")" = "0 600" ] || { echo "bad key perms" >&2; exit 1; }
+
+WORK=$(mktemp -d /root/skills.XXXXXX)          # root-only, outside the agent's reach
+trap 'rm -rf "$WORK"' EXIT
+# Pinned GitHub host key: verify at docs.github.com → "GitHub's SSH key fingerprints"
+echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$WORK/known_hosts"
+export GIT_SSH_COMMAND="ssh -i $KEY -o IdentitiesOnly=yes -o UserKnownHostsFile=$WORK/known_hosts -o StrictHostKeyChecking=yes"
+
+git -c core.symlinks=false -c core.hooksPath=/dev/null \
+  clone --quiet --depth 1 --branch main "$REPO" "$WORK/repo"
+REV=$(git -C "$WORK/repo" rev-parse --short HEAD)
+rm -rf "$WORK/repo/.git" "$WORK/repo/.github" "$WORK/repo/scripts"
+
+# Stage on the same filesystem, then swap in with an atomic rename
+STAGE=$(mktemp -d /opt/data/.skills-stage.XXXXXX)
+cp -R "$WORK/repo/." "$STAGE/"
+chown -R root:root "$STAGE"
+chmod -R u=rwX,go=rX "$STAGE"                   # the agent can read but never write
+rm -rf -- "$DEST"
+mv -T "$STAGE" "$DEST"
+echo "skills synced @ $REV"
+```
+Run it manually the first time:
+```bash
+fly ssh console -a hermes-me -C "sh -c \"echo $(base64 < scripts/sync-skills.sh | tr -d '\n') | base64 -d | sh\""
 ```
 Register the directory in `hx config edit` (define `hx` as in §7.1 first):
 ```yaml
@@ -373,26 +389,40 @@ skills:
 ```
 Then run `fly apps restart hermes-me` and check with `hx skills list`.
 
-**HTTPS fallback (if the image has no `ssh`):** create a fine-grained GitHub PAT with *Contents: read-only* on this one repo. Store it at `/opt/data/.ssh/gh_pat` (owned by root, mode 600) and use `REPO=https://x-access-token:$(cat /opt/data/.ssh/gh_pat)@github.com/<YOU>/hermes-skills.git`.
+**HTTPS fallback (if the image has no `ssh`):** create a fine-grained GitHub PAT with *Contents: read-only* on this one repo. Store it at `/opt/data/.ssh/gh_pat` (root-owned, mode 600, validated the same way as `KEY`). Pass it with `git -c http.extraHeader="Authorization: Basic $(printf 'x-access-token:%s' "$(cat …)" | base64 -w0)"` instead of putting it in the URL, so it never appears in `ps` output or in `.git/config`.
 
 ### 9.4 Auto-sync on push
+This token can SSH into the machine as root, so treat it as the most sensitive credential you have.
 ```bash
-fly tokens create deploy -a hermes-me -x 8760h
+fly tokens create deploy -a hermes-me -x 2160h   # 90 days; put a rotation reminder in your calendar
 ```
-Add the token as the repo secret `FLY_API_TOKEN`, then create `.github/workflows/sync.yml`:
+- In GitHub, add it as a secret on a **`production` environment** (Settings → Environments), not as a plain repo secret, and limit that environment to the `main` branch.
+- Protect `main`: require PRs, block force-pushes. Anyone who can push to `main` controls both the agent's skills and a root shell.
+- Pin every action to a full commit SHA. A `@master` ref lets whoever controls upstream run code next to your token.
+
+`.github/workflows/sync.yml`:
 ```yaml
 name: sync-skills-to-hermes
 on:
   push:
     branches: [main]
+permissions:
+  contents: read
+concurrency: sync-skills
 jobs:
   sync:
     runs-on: ubuntu-latest
+    environment: production
     steps:
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl ssh console -a hermes-me -C "/opt/data/bin/sync-skills.sh"
+      - uses: actions/checkout@<FULL_COMMIT_SHA>          # vX.Y.Z
+        with: { persist-credentials: false }
+      - uses: superfly/flyctl-actions/setup-flyctl@<FULL_COMMIT_SHA>   # vX.Y.Z
+      - name: Sync skills (script is streamed in, never stored on the volume)
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          B64=$(base64 -w0 scripts/sync-skills.sh)
+          flyctl ssh console -a hermes-me -C "sh -c \"echo $B64 | base64 -d | sh\""
 ```
 New skills are picked up when a session starts. If one doesn't appear, send `/new` in Telegram or restart the app.
 
@@ -424,10 +454,13 @@ In `hx config edit`:
 mcp_servers:
   github:
     command: npx
-    args: ["-y", "@modelcontextprotocol/server-github"]
+    args: ["-y", "<github-mcp-package>@<EXACT_VERSION>"]   # pin it; never resolve "latest" at runtime
     env:
       GITHUB_PERSONAL_ACCESS_TOKEN: "${GH_PAT}"
 ```
+- `GH_PAT` must be **fine-grained, read-only, and scoped to the specific repos** the agent needs. Assume the agent can read it (see SECURITY_REVIEW H2).
+- Pin the MCP package to an exact version. `npx -y <pkg>` with no version downloads and runs whatever was last published, with your PAT in its environment. Check whether the reference `@modelcontextprotocol/server-github` package is still maintained, or whether GitHub's official server has replaced it.
+
 MCP subprocesses only receive the variables listed under `env`. `hx mcp` opens the built-in catalog of approved servers.
 
 ### 11.2 Plugins
@@ -515,11 +548,15 @@ Hermes re-registers the webhook on restart. Confirm with `getWebhookInfo` (§6.2
 
 **Backups**
 - Daily Fly snapshots: run `fly volumes list -a hermes-me`, then `fly volumes snapshots list <vol-id>`.
-- Monthly off-site copy. It contains your memories and sessions, so store it encrypted:
+- Monthly off-site copy. It holds your memories, sessions and `/opt/data/.env`, so it is a **secret** and must be encrypted before it touches disk (`brew install age`; keep the age identity in your password manager):
   ```bash
-  fly ssh console -a hermes-me -C "tar czf /tmp/hermes-backup.tgz -C /opt/data --exclude=./installs --exclude=./.ssh ."
-  fly ssh sftp get /tmp/hermes-backup.tgz ./hermes-backup-$(date +%F).tgz -a hermes-me
-  fly ssh console -a hermes-me -C "rm /tmp/hermes-backup.tgz"
+  # On the server: write to a root-only temp file
+  fly ssh console -a hermes-me -C "sh -c 'umask 077; tar czf /root/hermes-backup.tgz -C /opt/data --exclude=./installs --exclude=./.ssh --exclude=./.skills-stage.* .'"
+  # Download into a 0700 directory OUTSIDE this repo, encrypt it, then shred the plaintext
+  mkdir -m 700 -p ~/hermes-backups && cd ~/hermes-backups
+  fly ssh sftp get /root/hermes-backup.tgz ./plain.tgz -a hermes-me
+  age -r <YOUR_AGE_PUBLIC_KEY> -o hermes-backup-$(date +%F).tgz.age plain.tgz && rm -P plain.tgz
+  fly ssh console -a hermes-me -C "rm -f /root/hermes-backup.tgz"
   ```
 
 ---
@@ -536,9 +573,14 @@ Hermes re-registers the webhook on restart. Confirm with `getWebhookInfo` (§6.2
 - [ ] Dashboard reachable only through `fly proxy`, with basic auth set
 - [ ] API server disabled, or private with a key
 - [ ] Approvals set to `smart`; cron and headless approvals `deny`; no YOLO
-- [ ] Deploy key is read-only, scoped to one repo, and stored root-owned with mode 600
+- [ ] Deploy key is read-only, scoped to one repo, and stored root-owned with mode 600; the local copy is deleted
+- [ ] Nothing root executes or trusts lives under `/opt/data` (sync script streamed in; no persistent `.git/`)
+- [ ] `/opt/data/skills-repo` is root-owned and read-only to the agent
+- [ ] Fly deploy token: 90-day expiry, held in a GitHub `production` environment; `main` protected; actions pinned by SHA
+- [ ] Inside the agent's terminal tool, `env` shows no `TELEGRAM_*`, `OPENROUTER_*` or `GH_PAT` values (SECURITY_REVIEW H2)
+- [ ] `GH_PAT` (if used) is fine-grained and read-only; MCP packages pinned to exact versions
 - [ ] Every OpenRouter key has a credit limit
-- [ ] Image tag pinned; `hx doctor` is clean
+- [ ] Image pinned by tag **and digest**; `hx doctor` is clean
 - [ ] Friends run on a separate app, with a sandbox or no terminal
 - [ ] Monthly backup taken
 
@@ -556,11 +598,11 @@ Hermes re-registers the webhook on restart. Confirm with `getWebhookInfo` (§6.2
 | `409 Conflict` | Something else is using the token (local Hermes or a second machine). Stop it and run `fly scale count 1`. |
 | Updates pile up (`pending_update_count` growing) | The app was down. It drains once it's back up; check `fly logs` for crashes. |
 | Group messages ignored | Privacy mode: turn it off and **re-add the bot**, or make it an admin. Also check `allowed_chats` and `group_allowed_chats`. |
-| `Permission denied` under `/opt/data` | You probably ran `hermes` as root. Fix: `fly ssh console -C "chown -R 10000:10000 /opt/data && chown -R root:root /opt/data/.ssh /opt/data/bin"`, then restart. |
+| `Permission denied` under `/opt/data` | You probably ran `hermes` as root. Fix: `fly ssh console -C "sh -c 'chown -R 10000:10000 /opt/data && chown -R root:root /opt/data/.ssh /opt/data/skills-repo'"`, then restart. |
 | Dashboard won't start | No auth provider. Check the `HERMES_DASHBOARD_BASIC_AUTH_*` secrets. |
 | `fly proxy` connects but the page hangs | Bind issue (§8). Try `HERMES_DASHBOARD_HOST = "fly-local-6pn"`. |
 | Cron didn't fire | Run `hx cron status`. The gateway must be up; check `TZ`. |
-| Skill missing | Run `/opt/data/bin/sync-skills.sh`, check `external_dirs`, run `hx skills list`, then start a new session. |
+| Skill missing | Re-run the sync workflow (or the manual command in §9.3), check `external_dirs`, run `hx skills list`, then start a new session. |
 | State gone after deploy | The volume isn't mounted at `/opt/data`. |
 
 ---

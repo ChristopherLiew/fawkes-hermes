@@ -1,0 +1,28 @@
+# Default gitleaks rules plus Hermes-specific ones.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "telegram-bot-token"
+description = "Telegram bot token"
+regex = '''\b[0-9]{8,10}:[A-Za-z0-9_-]{35}\b'''
+keywords = [":"]
+
+[[rules]]
+id = "openrouter-api-key"
+description = "OpenRouter API key"
+regex = '''sk-or-(v1-)?[a-f0-9]{32,}'''
+keywords = ["sk-or-"]
+
+[[rules]]
+id = "fly-api-token"
+description = "Fly.io API / deploy token"
+regex = '''(FlyV1 )?fm[12]_[A-Za-z0-9+/=_-]{20,}'''
+keywords = ["fm1_", "fm2_"]
+
+[allowlist]
+description = "Public values that are safe to commit"
+regexes = [
+  # GitHub's published SSH host key (pinned in DESIGN §9.3)
+  '''AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl''',
+]
