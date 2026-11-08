@@ -88,7 +88,7 @@ make local-logs | local-doctor | local-down | local-reset
 │   ├── workflows/ci.yml        # PRs: lint, validate, shellcheck, image pin (no secrets)
 │   ├── workflows/deploy-skills.yml   # main: publish skills (production env)
 │   ├── workflows/deploy-infra.yml    # manual: fly deploy + verify (production env)
-│   └── dependabot.yml          # SHA-pinned action updates
+│   └── dependabot.yml          # action-update alerts → make adopt-pr PR=<n>
 ├── docs/                       # GO_LIVE, CICD, DESIGN, SECURITY_REVIEW
 ├── AGENTS.md · CLAUDE.md       # agent guidance (CLAUDE.md imports AGENTS.md)
 ├── Makefile · compose.yaml

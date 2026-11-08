@@ -43,7 +43,7 @@ Repo: `ChristopherLiew/fawkes-hermes` (private, GitHub Free). Fly app: `hermes-m
 | `ci.yml` | Every PR and push to `main` | none | Checksum-pinned gitleaks: all hooks plus a full-history scan. Validates skills, shellchecks the sync script, runs `make check-image` (once `fly.toml` exists), rejects `Co-Authored-By` |
 | `deploy-skills.yml` | Push to `main` touching `skills/**`, the sync script or the workflow; `workflow_dispatch` | `FLY_API_TOKEN` | validate → stream `sync-skills.sh` with `REF=$GITHUB_SHA` → check `.revision` matches |
 | `deploy-infra.yml` | `workflow_dispatch` only, from `main`, input `version` | `FLY_API_TOKEN` | `check-image` + typed version equals the `fly.toml` tag → `flyctl deploy --ha=false` → assert exactly one started machine running the pinned digest → advisory log check for "Connected to Telegram" |
-| `dependabot.yml` | Monthly | none | PRs bumping the SHA-pinned actions |
+| `dependabot.yml` | Monthly | none | **Alert-only** PRs for action updates. Never merge them; run `make adopt-pr PR=<n>` (sole-author policy) |
 
 Both deploy workflows share the concurrency group `fly-hermes-me`, so a skills sync never overlaps a deploy. All actions are pinned to full commit SHAs. Workflows default to `permissions: contents: read` and `persist-credentials: false`. Runtime secrets (bot token, OpenRouter key, webhook secret) are never stored in GitHub.
 
