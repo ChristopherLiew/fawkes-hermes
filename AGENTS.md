@@ -25,7 +25,8 @@ make scan                            # gitleaks over history + working tree
 make skills-check                    # python3 scripts/validate_skills.py skills + shellcheck
 python3 scripts/validate_skills.py <dir>   # validate an arbitrary dir (useful for negative tests)
 make image-digest VERSION=vX.Y.Z     # tag@digest line for fly.toml via the Docker Hub API (no Docker)
-make deploy                          # lint → check-image → fly deploy --ha=false (manual, laptop only)
+gh workflow run deploy-infra -f version=vX.Y.Z   # infra deploy from GitHub (manual dispatch)
+make deploy                          # CLI fallback: lint → check-image → fly deploy --ha=false
 make sync-skills [REF=<sha>]         # stream scripts/sync-skills.sh to the machine as root
 make status | logs | ssh | dashboard # ssh = root; run hermes as the hermes user via `hx` (DESIGN §7.1)
 make local-up | local-hx ARGS="…" | local-down   # optional local instance (Docker, dev bot)
@@ -35,9 +36,9 @@ make local-up | local-hx ARGS="…" | local-down   # optional local instance (Do
 
 - **Two release paths, one repo.**
   - Skills ship automatically. A merge to `main` triggers `.github/workflows/deploy-skills.yml`, which runs validate, then streams `sync-skills.sh` with `REF=$GITHUB_SHA`, then checks `/opt/data/skills-repo/.revision`.
-  - Infra (`fly.toml`) ships only through a manual `make deploy`.
+  - Infra (`fly.toml`) ships through `deploy-infra.yml`. It's `workflow_dispatch` only: the typed version must match the `fly.toml` tag, and the run verifies a single machine on the pinned digest. `make deploy` is the CLI fallback.
   - `ci.yml` runs on PRs with no secrets.
-  - Never add `fly deploy` or `pull_request_target` to workflows.
+  - The repo is private on GitHub Free, so there's no branch protection or environment approval. Never add `pull_request_target` workflows. Never trigger `fly deploy` automatically on push. Never put runtime secrets (bot token, OpenRouter key) in GitHub. Both deploy workflows share the concurrency group `fly-hermes-me`.
 - **One machine, always on.** The webhook and cron share the gateway process, supervised by s6 in the official image. Keep `auto_stop_machines = "off"` and the machine count at 1. Two gateways on one token fight over the webhook.
 - **The only public port is 443→8443**, protected by a random path, `TELEGRAM_WEBHOOK_SECRET` and `TELEGRAM_ALLOWED_USERS`. Ports 9119 and 8642 never go under `[[services]]`.
 - **All state lives on the volume at `/opt/data`, which the agent (UID 10000) owns.** Assume the agent is prompt-injectable and hostile. It can rename or replace anything under `/opt/data`, so **root must never execute or trust files from the volume** (SECURITY_REVIEW H1). Any change to the sync flow must keep these properties:

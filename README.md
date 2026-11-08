@@ -14,7 +14,7 @@ A personal [Hermes Agent](https://hermes-agent.nousresearch.com/docs) deployment
 | Change | Path to production |
 |---|---|
 | Skills (`skills/`, see [skills/README.md](skills/README.md)) | PR → `ci` → merge to `main` → **`deploy-skills`** streams `scripts/sync-skills.sh` over `fly ssh` at that exact commit |
-| `fly.toml` / Hermes version | PR → `ci` (image pin check) → merge → **manual** `make deploy` |
+| `fly.toml` / Hermes version | PR → `ci` (image pin check) → merge → **Run workflow `deploy-infra`** (type the version) · CLI fallback `make deploy` |
 | Secrets | `fly secrets set` from your laptop (never in git) |
 | Agent config / cron | `hx config …` over `make ssh`, or `/cron add` in Telegram |
 
@@ -72,7 +72,7 @@ make local-logs | local-doctor | local-down | local-reset
 - **Pin everything:** the image by `tag@sha256:digest`, actions by commit SHA, MCP packages by exact version.
 - **Only 443 → 8443 is public.** Never add the dashboard (9119) or API server (8642) to `[[services]]`.
 - **Treat the agent as potentially hostile:** root never executes anything under `/opt/data`, and skills are published root-owned and read-only.
-- No `pull_request_target` workflows. `FLY_API_TOKEN` is only available to `deploy-skills` on `main`.
+- No `pull_request_target` workflows. `FLY_API_TOKEN` lives in the `production` environment, which only `main` can use (`deploy-skills`, `deploy-infra`).
 
 ## Layout
 
@@ -87,6 +87,7 @@ make local-logs | local-doctor | local-down | local-reset
 ├── .github/
 │   ├── workflows/ci.yml        # PRs: lint, validate, shellcheck, image pin (no secrets)
 │   ├── workflows/deploy-skills.yml   # main: publish skills (production env)
+│   ├── workflows/deploy-infra.yml    # manual: fly deploy + verify (production env)
 │   └── dependabot.yml          # SHA-pinned action updates
 ├── docs/                       # GO_LIVE, CICD, DESIGN, SECURITY_REVIEW
 ├── AGENTS.md · CLAUDE.md       # agent guidance (CLAUDE.md imports AGENTS.md)

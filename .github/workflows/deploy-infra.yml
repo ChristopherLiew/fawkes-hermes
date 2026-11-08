@@ -1,0 +1,94 @@
+name: deploy-infra
+
+# Deploys fly.toml from main to Fly. MANUAL ONLY (Actions → deploy-infra → Run workflow).
+# This private repo is on GitHub Free, so there are no required reviewers or branch protection.
+# To prevent accidental deploys, you must type the Hermes version, and it must match fly.toml.
+# CLI fallback: `make deploy` (docs/CICD.md).
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Hermes tag pinned in fly.toml (e.g. v0.23.0). Must match exactly."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fly-hermes-me # shared with deploy-skills: never sync and deploy at the same time
+  cancel-in-progress: false
+
+env:
+  FLY_APP: hermes-me
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    outputs:
+      digest: ${{ steps.pin.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Image pinned by tag@digest
+        run: make check-image
+      - name: Typed version matches fly.toml
+        id: pin
+        env:
+          WANT: ${{ inputs.version }}
+        run: |
+          img=$(sed -nE 's/^[[:space:]]*image[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' fly.toml)
+          tag=${img#*:}; tag=${tag%@*}; digest=${img#*@}
+          echo "fly.toml: tag=$tag digest=$digest"
+          [ "$tag" = "$WANT" ] || { echo "::error::typed '$WANT' but fly.toml pins '$tag'"; exit 1; }
+          grep -Eq '^app[[:space:]]*=[[:space:]]*"'"$FLY_APP"'"' fly.toml || { echo "::error::fly.toml app != $FLY_APP"; exit 1; }
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production # FLY_API_TOKEN; branch policy limits it to main
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: superfly/flyctl-actions/setup-flyctl@fc53c09e1bc3be6f54706524e3b82c4f462f77be # 1.5
+      - name: fly deploy (single machine)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy -a "$FLY_APP" --ha=false --wait-timeout 5m0s
+      - name: Verify exactly one started machine running the pinned digest
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          WANT_DIGEST: ${{ needs.verify.outputs.digest }}
+        run: |
+          flyctl machines list -a "$FLY_APP" --json > machines.json
+          python3 - <<'PY'
+          import json, os, sys
+          ms = json.load(open("machines.json"))
+          want = os.environ["WANT_DIGEST"]
+          print([(m.get("id"), m.get("state"), (m.get("image_ref") or {}).get("digest")) for m in ms])
+          if len(ms) != 1:
+              sys.exit(f"::error::expected exactly 1 machine, found {len(ms)} (run: fly scale count 1)")
+          m = ms[0]
+          if m.get("state") != "started":
+              sys.exit(f"::error::machine state is {m.get('state')}")
+          got = (m.get("image_ref") or {}).get("digest")
+          if got and got != want:
+              sys.exit(f"::error::running digest {got} != pinned {want}")
+          PY
+      - name: Gateway connected to Telegram (advisory)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          for i in $(seq 1 12); do
+            if flyctl logs -a "$FLY_APP" --no-tail 2>/dev/null | grep -q "Connected to Telegram"; then
+              echo "gateway connected"; exit 0
+            fi
+            sleep 10
+          done
+          echo "::warning::did not see 'Connected to Telegram' in logs within 2 min. Check: make logs, make webhook-info"
+      - name: Next steps
+        run: echo "::notice::Deployed. From your laptop, run make webhook-info and make webhook-test, then DM the bot."
