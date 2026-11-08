@@ -1,7 +1,7 @@
 ---
 name: flights
 description: "Compare and rank flights via Kiwi.com; never books."
-version: 1.0.0
+version: 1.0.1
 author: owner
 license: MIT
 platforms: [linux, macos]
@@ -39,7 +39,7 @@ The Kiwi.com MCP server must be registered on this Hermes instance as `kiwi` (no
 
    Done when every relevant airport, cabin and airline variant has been searched.
 3. **Normalise every candidate** using the rules in `references/scoring.md`: total cost, total time, stops, longest layover, local departure and arrival times (+1 for the next day), and the flags (redeye, late arrival 23:00–05:00, self-transfer risk, low-cost carrier without bags). Done when every row has all these fields, or "n/a" with a reason.
-4. **Rank** with the rubric in `references/scoring.md`, and present 3–4 rows using `templates/comparison.md`: 🏷 cheapest sensible, ⭐ best value, ⚡ fastest, and 🛋 most comfortable if the user cares about comfort. Done when each row names its airport, its flags and its link.
+4. **Rank** with the rubric in `references/scoring.md`, and present 3–4 rows using `templates/comparison.md` (on Telegram, use its bullet form, since tables don't render): 🏷 cheapest sensible, ⭐ best value, ⚡ fastest, and 🛋 most comfortable if the user cares about comfort. Done when each row names its airport, its flags and its link.
 5. **Cross-check the pick:** confirm its schedule and rough price on one other public source (the airline's own site via `web_search` / `web_extract`). Report any mismatch. Always print "checked {date} {time} {tz}; fares change".
 6. **Hand off:** give the Kiwi `bookingUrl` and the airline's site. Stop there.
 7. **Remember (optional):** when the user states a durable preference ("I always check a bag", "never Scoot", "home airport KUL"), offer to save it to memory, labelled with their name or handle, e.g. "Alex: always 1 checked bag".

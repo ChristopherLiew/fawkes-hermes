@@ -16,5 +16,8 @@ _Assumed: {defaults used, e.g. "normal pace, mid budget, base near Kyoto Stn"}_
 **Book yourself:** {timed tickets / restaurants, or "nothing"}
 **Sources:** [1] {url} [2] {url}
 
+**Telegram** (no table rendering; see the `telegram-format` skill): send each row as one line instead,
+e.g. `09:30 **{stop}**: {notes}` and `  ↳ {mode} {mins} min`.
+
 <!-- Rules: max 12 table rows per day (split into Morning / Afternoon tables if longer).
      Every leg row has a mode and minutes. Unconfirmed prices or hours carry "unverified". -->

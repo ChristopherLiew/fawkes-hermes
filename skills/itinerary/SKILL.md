@@ -1,7 +1,7 @@
 ---
 name: itinerary
 description: "Day-by-day trip plans with timings, costs and rain plans."
-version: 1.0.0
+version: 1.0.1
 author: owner
 license: MIT
 platforms: [linux, macos]
@@ -36,7 +36,7 @@ Builds a sequenced day plan: stops clustered by area, every leg timed, costs est
    - Give costs in local currency, with a rough total in the home currency.
    - Each day gets a **rain plan** (an indoor swap for each outdoor block) and **one fallback** if a key stop is closed.
 
-   Done when every day fills the template with no more than 12 table rows. Split a long day into morning and afternoon tables.
+   Done when every day fills the template with no more than 12 rows (on Telegram, use its line-per-row form, since tables don't render). Split a long day into morning and afternoon tables.
 4. **Deliver.** Send one day per message for trips of 3 days or more. Put numbered sources at the end of each day. Close with what the user must book themselves (timed tickets, restaurants).
 
 ## Pitfalls
