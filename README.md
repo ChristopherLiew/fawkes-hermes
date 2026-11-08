@@ -45,7 +45,7 @@ make skills-check                  # validate skills/ + shellcheck the sync scri
 make image-digest VERSION=v0.23.0  # get a tag@digest line for fly.toml (no Docker needed)
 make deploy                        # lint → check image pin → fly deploy (single machine)
 make status | logs | ssh | restart | releases | secrets
-make dashboard                     # private dashboard at http://localhost:9119 via fly proxy
+make dashboard                     # private dashboard at http://localhost:9119 via fly proxy (docs/DESIGN.md §8)
 make webhook-info | webhook-test   # Telegram webhook checks (inputs prompted, hidden)
 make sync-skills [REF=<sha>]       # manual skills publish (default: origin/main)
 make backup AGE_RECIPIENT=age1...  # encrypted backup to ~/hermes-backups

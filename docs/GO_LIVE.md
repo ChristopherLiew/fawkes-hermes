@@ -106,6 +106,7 @@ make logs                   # wait for: [telegram] Connected to Telegram (webhoo
 make webhook-info           # url = https://fawkes-hermes.fly.dev/tg-…, no last_error_message
 make webhook-test           # must print "OK: 4xx"
 curl -m 5 https://fawkes-hermes.fly.dev:9119 || echo "dashboard not public ✅"
+make dashboard              # then open http://localhost:9119 (DESIGN §8: how access is secured)
 ```
 ✅ All of the above pass, and the bot replies to your DM. A "set up a model" error is fine at this point.
 
