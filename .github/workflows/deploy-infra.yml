@@ -66,9 +66,22 @@ jobs:
         run: |
           flyctl machines list -a "$FLY_APP" --json > machines.json
           python3 - <<'PY'
-          import json, os, sys
+          import json, os, sys, urllib.request
           ms = json.load(open("machines.json"))
           want = os.environ["WANT_DIGEST"]
+          # The pin is a multi-arch index digest; Fly reports the platform (linux/amd64) manifest digest.
+          # Accept the index itself or its linux/amd64 child, resolved from Docker Hub.
+          repo = "nousresearch/hermes-agent"
+          tok = json.load(urllib.request.urlopen(
+              f"https://auth.docker.io/token?service=registry.docker.io&scope=repository:{repo}:pull", timeout=20))["token"]
+          req = urllib.request.Request(f"https://registry-1.docker.io/v2/{repo}/manifests/{want}", headers={
+              "Authorization": f"Bearer {tok}",
+              "Accept": "application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json"})
+          index = json.load(urllib.request.urlopen(req, timeout=20))
+          allowed = {want} | {c["digest"] for c in index.get("manifests", [])
+                              if (c.get("platform") or {}).get("os") == "linux"
+                              and (c.get("platform") or {}).get("architecture") == "amd64"}
+          print("allowed digests:", sorted(allowed))
           print([(m.get("id"), m.get("state"), (m.get("image_ref") or {}).get("digest")) for m in ms])
           if len(ms) != 1:
               sys.exit(f"::error::expected exactly 1 machine, found {len(ms)} (run: fly scale count 1)")
@@ -76,8 +89,9 @@ jobs:
           if m.get("state") != "started":
               sys.exit(f"::error::machine state is {m.get('state')}")
           got = (m.get("image_ref") or {}).get("digest")
-          if got and got != want:
-              sys.exit(f"::error::running digest {got} != pinned {want}")
+          if got and got not in allowed:
+              sys.exit(f"::error::running digest {got} is not the pinned {want} (or its linux/amd64 manifest)")
+          print("machine runs the pinned image")
           PY
       - name: Gateway connected to Telegram (advisory)
         env:
