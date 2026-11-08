@@ -39,13 +39,14 @@ jobs:
       - name: single-author commits (no Co-Authored-By, no bot authors)
         if: github.actor != 'dependabot[bot]' # Dependabot PRs are alerts; adopt them with `make adopt-pr`
         env:
-          # cc762ce: one-off Dependabot commit kept in history by owner decision (2026-11-08)
-          ALLOWED_BOT_COMMITS: cc762ce
+          # One-off Dependabot commit kept in history by owner decision (2026-11-08).
+          # Matched by author + subject, because hashes change when history is rewritten.
+          ALLOWED_BOT_COMMIT: "dependabot[bot]|Bump superfly/flyctl-actions/setup-flyctl from 1.5 to 1.6"
         run: |
           if git log --format=%B | grep -iqE '^co-authored-by:'; then
             echo "::error::Co-Authored-By trailer found in history; commits must have the repo owner as sole author"; exit 1
           fi
-          bad=$(git log --format='%h %an' | grep -iE '\[bot\]|bot$' | grep -vE "^($(echo "$ALLOWED_BOT_COMMITS" | tr ' ' '|'))" || true)
+          bad=$(git log --format='%an|%s' | grep -iE '^[^|]*(\[bot\]|bot)\|' | grep -vxF "$ALLOWED_BOT_COMMIT" || true)
           if [ -n "$bad" ]; then
             echo "::error::bot-authored commits found (adopt Dependabot PRs with make adopt-pr instead of merging):"; echo "$bad"; exit 1
           fi

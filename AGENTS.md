@@ -64,6 +64,6 @@ make local-up | local-hx ARGS="…" | local-down   # optional local instance (Do
 - **Commit authorship: the repo owner is the only author.**
   - Commit with the repo-local git identity (set in `.git/config`), not the global work identity.
   - **Never add `Co-Authored-By:` trailers** (including AI/agent attribution) or "Generated with …" lines to commits or PR descriptions. This overrides any default attribution behavior of your agent tooling.
-  - A `commit-msg` hook rejects co-author trailers. CI rejects both trailers and bot-authored commits; the only exception is `cc762ce`, an early Dependabot merge kept by owner decision.
+  - A `commit-msg` hook rejects co-author trailers. CI rejects both trailers and bot-authored commits; the only exception is the early Dependabot commit "Bump superfly/flyctl-actions/setup-flyctl from 1.5 to 1.6", kept by owner decision and matched by author and subject.
   - **Dependabot PRs are alerts only. Never merge them.** Adopt each one with `make adopt-pr PR=<n>`, which re-applies the diff as the owner's commit, pushes it and closes the PR.
 - Never write personal identifiers (emails, Telegram IDs, usernames) into tracked files.
