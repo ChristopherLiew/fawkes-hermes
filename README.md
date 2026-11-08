@@ -11,6 +11,56 @@ A personal [Hermes Agent](https://hermes-agent.nousresearch.com/docs) deployment
 - **Design / reference:** [docs/DESIGN.md](docs/DESIGN.md)
 - **Security review:** [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md)
 
+## Architecture at a glance
+
+Details, trust boundaries and invariants: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+```mermaid
+flowchart LR
+  user([Telegram user]) -->|HTTPS POST| edge[Fly edge :443]
+  edge -->|":8443 /tg-&lt;random&gt;<br/>secret header + allowlist"| gw
+
+  subgraph fly["Fly machine · fawkes-hermes · sin · 1 machine, always on"]
+    gw["hermes gateway<br/>webhook + cron"]
+    dash["dashboard :9119<br/>private, basic auth"]
+    subgraph vol["volume /opt/data (owned by agent, UID 10000)"]
+      cfg["config.yaml · memories · sessions"]
+      repo["skills-repo/<br/>root-owned, read-only"]
+      key[".ssh/skills_deploy<br/>root-only"]
+    end
+    gw --- cfg
+    gw -->|"skills.external_dirs"| repo
+  end
+
+  gw -->|model calls| or[OpenRouter]
+  gw -->|"skill scripts"| apis["LTA DataMall · data.gov.sg<br/>Open-Meteo"]
+  gw -->|"MCP: search-flight"| kiwi[Kiwi.com]
+  laptop([your laptop]) -.->|"make dashboard<br/>fly proxy"| dash
+  laptop -.->|"fly secrets set"| gw
+```
+
+How a skill gets from this repo to Hermes:
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Dev as You (PR)
+  participant GH as GitHub main
+  participant CI as deploy-skills (production env)
+  participant Root as Fly machine (root via fly ssh)
+  participant Agent as Hermes gateway (UID 10000)
+  Dev->>GH: merge PR touching skills/ (ci: validate + tests green)
+  GH->>CI: push to main
+  CI->>CI: validate_skills.py + unittest
+  CI->>Root: stream sync-skills.sh over fly ssh (REF = commit SHA, never stored on volume)
+  Root->>Root: check deploy key (root, 600, no symlink); system-only PATH
+  Root->>GH: git fetch --depth 1 REF over SSH (read-only deploy key)
+  Root->>Root: copy skills/ only → stage → chown root, chmod go-w → atomic mv
+  Root-->>CI: /opt/data/skills-repo/.revision == SHA ✔
+  Agent->>Root: reads skills-repo via skills.external_dirs (read-only)
+  Note over Agent: new sessions (/new) see the updated skills
+```
+
 ## How changes ship
 
 | Change | Path to production |

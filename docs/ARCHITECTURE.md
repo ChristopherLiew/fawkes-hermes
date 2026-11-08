@@ -11,9 +11,9 @@ One personal Hermes Agent (the prebuilt `nousresearch/hermes-agent` image) runs 
                                               │  secret header + user allowlist
                                               ▼
                       ┌── machine (1, always on, image pinned by tag@digest) ──┐
-                      │ s6 supervises:                                          │
-                      │   gateway  → webhook handler + cron ticker             │
-                      │   dashboard :9119 (private network + basic auth)       │
+                      │ no s6 on Fly (/fly/init is PID 1); fly.toml runs:       │
+                      │   gateway  → webhook handler + cron ticker (foreground) │
+                      │   dashboard :9119 restart loop (private + basic auth)  │
                       │ runs as hermes (UID 10000); root only for ssh/sync     │
                       │                                                         │
                       │ volume hermes_data → /opt/data  (all state)             │
@@ -22,7 +22,10 @@ One personal Hermes Agent (the prebuilt `nousresearch/hermes-agent` image) runs 
                       │   .ssh/skills_deploy   root-only deploy key             │
                       └─────────────────────────────────────────────────────────┘
  GitHub (this repo) ──▶ CI ──▶ deploy-skills (auto) / deploy-infra (manual) ──▶ fly ssh / fly deploy
+ gateway ──▶ OpenRouter (model) · LTA / data.gov.sg / Open-Meteo (skill scripts) · Kiwi.com (MCP)
 ```
+
+Rendered diagrams of this map and of the skills delivery sequence are in the [README](../README.md#architecture-at-a-glance).
 
 ## Components
 
