@@ -2,7 +2,7 @@
 
 How changes reach the running agent. Setup details live in [DESIGN.md](DESIGN.md), and the first-time setup is in [GO_LIVE.md](GO_LIVE.md). The security reasoning behind each control is in [SECURITY_REVIEW.md](SECURITY_REVIEW.md).
 
-Repo: `ChristopherLiew/fawkes-hermes` (private, GitHub Free). Fly app: `hermes-me` (`sin`).
+Repo: `ChristopherLiew/fawkes-hermes` (private, GitHub Free). Fly app: `fawkes-hermes` (`sin`).
 
 ## One repo, two release paths, both from GitHub
 
@@ -19,7 +19,7 @@ Repo: `ChristopherLiew/fawkes-hermes` (private, GitHub Free). Fly app: `hermes-m
                      verify pin → fly deploy → verify       → verify .revision
                                          │      env: production (main only) → FLY_API_TOKEN
                                          ▼                              ▼
-               ┌──────────────────────── Fly app hermes-me (sin) ───────────────────────────┐
+               ┌────────────────────── Fly app fawkes-hermes (sin) ─────────────────────────┐
                │ machine image (pinned tag@digest)          /opt/data/skills-repo @ <sha>    │
                │ volume /opt/data persists across deploys   (root-owned, read-only)          │
                └────────────────────────────────────────────────────────────────────────────┘
@@ -45,7 +45,7 @@ Repo: `ChristopherLiew/fawkes-hermes` (private, GitHub Free). Fly app: `hermes-m
 | `deploy-infra.yml` | `workflow_dispatch` only, from `main`, input `version` | `FLY_API_TOKEN` | `check-image` + typed version equals the `fly.toml` tag → `flyctl deploy --ha=false` → assert exactly one started machine running the pinned digest → advisory log check for "Connected to Telegram" |
 | `dependabot.yml` | Monthly | none | **Alert-only** PRs for action updates. Never merge them; run `make adopt-pr PR=<n>` (sole-author policy) |
 
-Both deploy workflows share the concurrency group `fly-hermes-me`, so a skills sync never overlaps a deploy. All actions are pinned to full commit SHAs. Workflows default to `permissions: contents: read` and `persist-credentials: false`. Runtime secrets (bot token, OpenRouter key, webhook secret) are never stored in GitHub.
+Both deploy workflows share the concurrency group `fly-fawkes-hermes`, so a skills sync never overlaps a deploy. All actions are pinned to full commit SHAs. Workflows default to `permissions: contents: read` and `persist-credentials: false`. Runtime secrets (bot token, OpenRouter key, webhook secret) are never stored in GitHub.
 
 ---
 
@@ -105,5 +105,5 @@ fly tokens create deploy ──pipe──▶ gh secret set --env production ─�
 
 | Credential | Lives in | Scope | Expiry |
 |---|---|---|---|
-| `FLY_API_TOKEN` | `fawkes-hermes` → Environments → `production` (branch policy: `main`) | `fly tokens create deploy -a hermes-me`: deploy plus root SSH | 90 days. Set a reminder. |
+| `FLY_API_TOKEN` | `fawkes-hermes` → Environments → `production` (branch policy: `main`) | `fly tokens create deploy -a fawkes-hermes`: deploy plus root SSH | 90 days. Set a reminder. |
 | Deploy key | `/opt/data/.ssh/skills_deploy` (root, mode 600); public half in repo Deploy keys | Read-only, this repo | Rotate when compromised |

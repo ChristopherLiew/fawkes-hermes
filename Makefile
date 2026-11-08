@@ -1,11 +1,11 @@
-# Common commands for the hermes-me Fly.io deployment.
+# Common commands for the fawkes-hermes Fly.io deployment.
 # Run `make` (or `make help`) to list targets. See docs/CICD.md for the release flow.
 
 SHELL := /bin/bash
 .SHELLFLAGS := -eu -o pipefail -c
 .DEFAULT_GOAL := help
 
-APP          ?= hermes-me
+APP          ?= fawkes-hermes
 FLY          ?= fly
 # Skills sync: repo URL as the deploy key sees it, and the ref to publish
 SKILLS_GIT   ?= $(shell git remote get-url origin 2>/dev/null | sed -E 's#^https://github.com/#git@github.com:#; s#(\.git)?$$#.git#')

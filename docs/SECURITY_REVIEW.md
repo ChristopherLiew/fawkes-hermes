@@ -8,7 +8,7 @@
 
 | Actor | Can reach | Goal |
 |---|---|---|
-| Internet | `https://hermes-me.fly.dev:443` (webhook path only) | Inject updates, run up cost |
+| Internet | `https://fawkes-hermes.fly.dev:443` (webhook path only) | Inject updates, run up cost |
 | Content the agent reads (web pages, docs, group chat) | The model's context, through **prompt injection** | Get the agent to run commands, read secrets, escalate to root |
 | The agent process (UID 10000) | Everything under `/opt/data`, its own env, outbound network | Same as above, once injected |
 | Anyone who can merge to `main` of this repo / run the `production` environment | `FLY_API_TOKEN` → root SSH; `skills/` → agent instructions | Full machine takeover; steer the agent |
@@ -38,7 +38,7 @@ Either path gives root on the next sync, which means the deploy key, every secre
 **Where:** DESIGN §5, §11.1.
 **Issue:** Fly secrets are injected as environment variables into the gateway process. `/opt/data/.env` and `config.yaml` are owned by UID 10000. If the terminal or code-execution tool inherits the environment, or can `cat /proc/<gateway-pid>/environ` (same UID, so it can), a prompt injection can exfiltrate `TELEGRAM_BOT_TOKEN`, `OPENROUTER_API_KEY`, `GH_PAT` and the webhook secret.
 **Mitigations:**
-- 🔎 On first deploy, ask the agent to run `env | cut -d= -f1` and `cat /proc/1/environ | tr '\0' '\n' | cut -d= -f1`, then confirm which secrets it can see. If they're visible and you don't need the terminal day to day, **disable the terminal and code-execution toolsets** on `hermes-me` as well, or move them to the Modal backend (§12).
+- 🔎 On first deploy, ask the agent to run `env | cut -d= -f1` and `cat /proc/1/environ | tr '\0' '\n' | cut -d= -f1`, then confirm which secrets it can see. If they're visible and you don't need the terminal day to day, **disable the terminal and code-execution toolsets** on `fawkes-hermes` as well, or move them to the Modal backend (§12).
 - The limits on damage already in the design: an OpenRouter credit limit, a Telegram allowlist (a leaked bot token lets someone impersonate the bot but not command the agent), and a read-only, fine-grained `GH_PAT` ✅ (added to §11.1).
 - Keep `approvals.mode: smart` and the cron `deny` default (already in §7.5).
 - Rotate any secret you suspect has leaked using §14.
@@ -72,7 +72,7 @@ Tags can be moved after you pin them. §1.4 now requires `:<VERSION>@sha256:<DIG
 §9.3 now deletes the local copy once it's uploaded. The key is only needed on the server; regenerate it if you ever need a new one.
 
 ### L2. The dashboard on 6PN is reachable from other apps in the same Fly org
-Basic auth is the only control between the dashboard and other apps on the private network. Keep the org limited to your own apps. If you add `hermes-friends` to the same org, it can reach `hermes-me.internal:9119`, so consider a **separate Fly org** for the friends app.
+Basic auth is the only control between the dashboard and other apps on the private network. Keep the org limited to your own apps. If you add `hermes-friends` to the same org, it can reach `fawkes-hermes.internal:9119`, so consider a **separate Fly org** for the friends app.
 
 ### L3. Compromised v1 bot token 🔎 verify
 Confirm it was revoked in BotFather, and purge any copies: old notes, chat logs, shell history (`history | grep -E '[0-9]{8,10}:'`).

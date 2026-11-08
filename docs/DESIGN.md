@@ -14,7 +14,7 @@ Telegram (webhook mode) + private dashboard · always on · Singapore (`sin`)
    (X-Telegram-Bot-Api-Secret-Token)│                  │
                                     ▼                  │
 ┌──────────────────────── Fly edge :443 (TLS) ─────────┼───────┐
-│ Fly app: hermes-me (sin)                             │       │
+│ Fly app: fawkes-hermes (sin)                         │       │
 │   only public route: 443 → 8443  /tg-<random>        │       │
 │                                                      ▼       │
 │  nousresearch/hermes-agent:<PINNED>  (s6 supervises both)    │
@@ -82,10 +82,10 @@ Pick the newest plain release tag at hub.docker.com/r/nousresearch/hermes-agent/
 ## 3. Create the Fly app and volume
 
 ```bash
-mkdir -p ~/hermes-cloud/hermes-me && cd ~/hermes-cloud/hermes-me
+mkdir -p ~/hermes-cloud/fawkes-hermes && cd ~/hermes-cloud/fawkes-hermes
 
-fly apps create hermes-me
-fly volumes create hermes_data --app hermes-me --region sin --size 3 --yes
+fly apps create fawkes-hermes
+fly volumes create hermes_data --app fawkes-hermes --region sin --size 3 --yes
 ```
 
 ---
@@ -93,7 +93,7 @@ fly volumes create hermes_data --app hermes-me --region sin --size 3 --yes
 ## 4. `fly.toml`
 
 ```toml
-app = "hermes-me"
+app = "fawkes-hermes"
 primary_region = "sin"
 
 [build]
@@ -151,7 +151,7 @@ The webhook URL, and the random path in it, is set as a secret in §5. Hermes re
 `read -s` keeps the values out of your shell history.
 
 ```bash
-cd ~/hermes-cloud/hermes-me
+cd ~/hermes-cloud/fawkes-hermes
 
 read -rsp "Bot token: " BOT_TOKEN; echo
 read -rsp "OpenRouter key: " OPENROUTER_KEY; echo
@@ -166,7 +166,7 @@ echo "Webhook path: $WEBHOOK_PATH   (save it in your password manager)"
 fly secrets set --stage \
   TELEGRAM_BOT_TOKEN="$BOT_TOKEN" \
   TELEGRAM_ALLOWED_USERS="$MY_TG_ID" \
-  TELEGRAM_WEBHOOK_URL="https://hermes-me.fly.dev$WEBHOOK_PATH" \
+  TELEGRAM_WEBHOOK_URL="https://fawkes-hermes.fly.dev$WEBHOOK_PATH" \
   TELEGRAM_WEBHOOK_SECRET="$WEBHOOK_SECRET" \
   OPENROUTER_API_KEY="$OPENROUTER_KEY" \
   HERMES_DASHBOARD_BASIC_AUTH_USERNAME="$DASH_USER" \
@@ -201,7 +201,7 @@ curl -s "https://api.telegram.org/bot$BOT_TOKEN/getWebhookInfo" | python3 -m jso
 unset BOT_TOKEN
 ```
 You want:
-- `url` = `https://hermes-me.fly.dev/tg-…`
+- `url` = `https://fawkes-hermes.fly.dev/tg-…`
 - `pending_update_count` at or near 0
 - no `last_error_message`. If there is one, it tells you what Telegram saw, such as a 404 or a TLS error.
 
@@ -209,7 +209,7 @@ You want:
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" -X POST \
   -H 'Content-Type: application/json' -d '{"update_id":1}' \
-  "https://hermes-me.fly.dev$WEBHOOK_PATH"
+  "https://fawkes-hermes.fly.dev$WEBHOOK_PATH"
 ```
 A 4xx (401 or 403) means the secret header check works ✅. A 200 means the check isn't being enforced, so stop and investigate. A 502 or 503 means nothing is listening on 8443; check `fly logs`.
 
@@ -223,7 +223,7 @@ DM the bot. It should reply. If no model is configured yet, the reply may be an 
 ### 7.1 Shell and helper
 `fly ssh console` logs you in as **root**. Run `hermes` as the `hermes` user, or it will create root-owned files the gateway can't read.
 ```bash
-fly ssh console -a hermes-me
+fly ssh console -a fawkes-hermes
 
 # --- inside ---
 HB=$(command -v hermes || echo /opt/hermes/.venv/bin/hermes)
@@ -277,7 +277,7 @@ Write `/opt/data/SOUL.md`, then run `chown 10000:10000 /opt/data/SOUL.md`.
 ### 7.7 Apply
 ```bash
 exit
-fly apps restart hermes-me
+fly apps restart fawkes-hermes
 ```
 
 ---
@@ -285,10 +285,10 @@ fly apps restart hermes-me
 ## 8. Dashboard access (private network only)
 
 ```bash
-fly proxy 9119:9119 -a hermes-me
+fly proxy 9119:9119 -a fawkes-hermes
 # open http://localhost:9119 and log in as DASH_USER / DASH_PASS
 ```
-- Port 9119 isn't listed in `[[services]]`, so it can't be reached through `hermes-me.fly.dev`. To confirm, `curl -m 5 https://hermes-me.fly.dev:9119` should fail.
+- Port 9119 isn't listed in `[[services]]`, so it can't be reached through `fawkes-hermes.fly.dev`. To confirm, `curl -m 5 https://fawkes-hermes.fly.dev:9119` should fail.
 - **If the proxy connects but the page hangs:** run `ss -ltnp | grep 9119` in `fly ssh console`. If it shows only `0.0.0.0`, set `HERMES_DASHBOARD_HOST = "fly-local-6pn"` and redeploy.
 - On your phone, use Telegram. Reaching the dashboard from a phone would need Tailscale or a Cloudflare Tunnel with Access via a custom image. Never add 9119 to `[[services]]`.
 
@@ -318,11 +318,11 @@ The key can read the whole repo. That's acceptable because nothing secret is com
 > **Security rule (see [SECURITY_REVIEW.md](SECURITY_REVIEW.md) H1):** `/opt/data` is owned by the agent (UID 10000), so the agent can rename or replace anything inside it, including root-owned subdirectories. Anything that **root executes or trusts** must not live on the volume. That's why `sync-skills.sh` is streamed in on every run, clones fresh into `/root` temp space, and publishes a copy with no `.git/`.
 
 ```bash
-fly ssh console -a hermes-me -C "mkdir -p /opt/data/.ssh"
-fly ssh sftp shell -a hermes-me
+fly ssh console -a fawkes-hermes -C "mkdir -p /opt/data/.ssh"
+fly ssh sftp shell -a fawkes-hermes
 » put /Users/<you>/.ssh/hermes_skills_deploy /opt/data/.ssh/skills_deploy
 » exit
-fly ssh console -a hermes-me -C "sh -c 'chown -R root:root /opt/data/.ssh && chmod 700 /opt/data/.ssh && chmod 600 /opt/data/.ssh/skills_deploy'"
+fly ssh console -a fawkes-hermes -C "sh -c 'chown -R root:root /opt/data/.ssh && chmod 700 /opt/data/.ssh && chmod 600 /opt/data/.ssh/skills_deploy'"
 rm -P ~/.ssh/hermes_skills_deploy      # the key now exists only on the server
 ```
 `which git ssh` inside `fly ssh console` must show both; otherwise use the HTTPS fallback below.
@@ -341,7 +341,7 @@ skills:
   external_dirs:
     - /opt/data/skills-repo
 ```
-Then run `fly apps restart hermes-me` and check with `hx skills list`.
+Then run `fly apps restart fawkes-hermes` and check with `hx skills list`.
 
 **Shadowing:** Hermes resolves skills in this order: project, then local (`/opt/data/skills/`), then `skills.create_dir`, then `external_dirs`. A skill the agent creates with the same name as a repo skill **silently overrides** it. If `hx skills list` shows a repo skill coming from the wrong path, delete the local copy and land its changes here through a PR. Authoring rules are in `skills/AGENTS.md`.
 
@@ -352,7 +352,7 @@ Then run `fly apps restart hermes-me` and check with `hx skills list`.
 
 The workflow's `FLY_API_TOKEN` can SSH in as root, so treat it as your most sensitive credential:
 ```bash
-fly tokens create deploy -a hermes-me -x 2160h   # 90 days; put a rotation reminder in your calendar
+fly tokens create deploy -a fawkes-hermes -x 2160h   # 90 days; put a rotation reminder in your calendar
 ```
 - Store it as a secret on the **`production` environment**, limited to the `main` branch. Don't make it a repo secret.
 - Protect `main`: require PRs and passing `ci` checks, and block force-pushes.
@@ -381,7 +381,7 @@ Message the bot:
 ### 11.1 MCP (GitHub example)
 ```bash
 read -rsp "GH PAT: " GHP; echo
-fly secrets set GH_PAT="$GHP" -a hermes-me; unset GHP
+fly secrets set GH_PAT="$GHP" -a fawkes-hermes; unset GHP
 ```
 In `hx config edit`:
 ```yaml
@@ -414,7 +414,7 @@ def check_deploy_status(service: str) -> dict:
 ### 11.3 If you later need the API server
 ```bash
 fly secrets set API_SERVER_ENABLED=true API_SERVER_HOST=:: \
-  API_SERVER_KEY="$(openssl rand -hex 32)" -a hermes-me
+  API_SERVER_KEY="$(openssl rand -hex 32)" -a fawkes-hermes
 ```
 Reach it only through `fly proxy 8642:8642`. Never add it to `[[services]]`.
 
@@ -422,7 +422,7 @@ Reach it only through `fly proxy 8642:8642`. Never add it to `[[services]]`.
 
 ## 12. Friends: a separate app
 
-**Don't add friends to `hermes-me`.** Sessions are per user, but one gateway shares memory, skills, the terminal and the filesystem.
+**Don't add friends to `fawkes-hermes`.** Sessions are per user, but one gateway shares memory, skills, the terminal and the filesystem.
 
 1. Create a **second bot** in BotFather. One token can't serve two gateways.
 2. Create a **second OpenRouter key** with its own credit limit.
@@ -453,7 +453,7 @@ Check these against fly.io/pricing with the **Singapore** region selected.
 
 | Item | Monthly |
 |---|---|
-| `hermes-me`: shared-cpu-1x, 2 GB, always on | about $12.70 at the Ashburn rate; Singapore is higher |
+| `fawkes-hermes`: shared-cpu-1x, 2 GB, always on | about $12.70 at the Ashburn rate; Singapore is higher |
 | Volume, 3 GB | about $0.45 |
 | Shared IPv4 + IPv6 | $0 (don't allocate a dedicated IPv4) |
 | Egress (Asia-Pacific) | cents |
@@ -474,23 +474,23 @@ Spending controls:
 **Rotate the webhook secret or path:**
 ```bash
 fly secrets set TELEGRAM_WEBHOOK_SECRET="$(openssl rand -hex 32)" \
-  TELEGRAM_WEBHOOK_URL="https://hermes-me.fly.dev/tg-$(openssl rand -hex 12)" -a hermes-me
+  TELEGRAM_WEBHOOK_URL="https://fawkes-hermes.fly.dev/tg-$(openssl rand -hex 12)" -a fawkes-hermes
 ```
 Hermes re-registers the webhook on restart. Confirm with `getWebhookInfo` (§6.2).
 
 **Rotate the bot token:** revoke it in BotFather, then `fly secrets set TELEGRAM_BOT_TOKEN=…`.
 
 **Backups**
-- Daily Fly snapshots: run `fly volumes list -a hermes-me`, then `fly volumes snapshots list <vol-id>`.
+- Daily Fly snapshots: run `fly volumes list -a fawkes-hermes`, then `fly volumes snapshots list <vol-id>`.
 - Monthly off-site copy. It holds your memories, sessions and `/opt/data/.env`, so it is a **secret** and must be encrypted before it touches disk (`brew install age`; keep the age identity in your password manager):
   ```bash
   # On the server: write to a root-only temp file
-  fly ssh console -a hermes-me -C "sh -c 'umask 077; tar czf /root/hermes-backup.tgz -C /opt/data --exclude=./installs --exclude=./.ssh --exclude=./.skills-stage.* .'"
+  fly ssh console -a fawkes-hermes -C "sh -c 'umask 077; tar czf /root/hermes-backup.tgz -C /opt/data --exclude=./installs --exclude=./.ssh --exclude=./.skills-stage.* .'"
   # Download into a 0700 directory OUTSIDE this repo, encrypt it, then shred the plaintext
   mkdir -m 700 -p ~/hermes-backups && cd ~/hermes-backups
-  fly ssh sftp get /root/hermes-backup.tgz ./plain.tgz -a hermes-me
+  fly ssh sftp get /root/hermes-backup.tgz ./plain.tgz -a fawkes-hermes
   age -r <YOUR_AGE_PUBLIC_KEY> -o hermes-backup-$(date +%F).tgz.age plain.tgz && rm -P plain.tgz
-  fly ssh console -a hermes-me -C "rm -f /root/hermes-backup.tgz"
+  fly ssh console -a fawkes-hermes -C "rm -f /root/hermes-backup.tgz"
   ```
 
 ---
@@ -502,7 +502,7 @@ Hermes re-registers the webhook on restart. Confirm with `getWebhookInfo` (§6.2
 - [ ] Random webhook path, stored as a secret
 - [ ] `TELEGRAM_ALLOWED_USERS` contains only your ID; no `*_ALLOW_ALL_USERS` flags
 - [ ] Group allowlist, if used, contains only groups whose members you trust with the agent
-- [ ] The only `[[services]]` route is 443→8443; `https://hermes-me.fly.dev:9119` is unreachable
+- [ ] The only `[[services]]` route is 443→8443; `https://fawkes-hermes.fly.dev:9119` is unreachable
 - [ ] Exactly one machine, with `auto_stop_machines = "off"`
 - [ ] Dashboard reachable only through `fly proxy`, with basic auth set
 - [ ] API server disabled, or private with a key
