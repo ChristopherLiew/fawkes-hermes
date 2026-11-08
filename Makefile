@@ -8,7 +8,7 @@ SHELL := /bin/bash
 APP          ?= fawkes-hermes
 FLY          ?= fly
 # Skills sync: repo URL as the deploy key sees it, and the ref to publish
-SKILLS_GIT   ?= $(shell git remote get-url origin 2>/dev/null | sed -E 's#^https://github.com/#git@github.com:#; s#(\.git)?$$#.git#')
+SKILLS_GIT   ?= $(shell git remote get-url origin 2>/dev/null | sed -E 's|^https://github.com/|git@github.com:|; s|(\.git)?$$|.git|')
 REF          ?= main
 BACKUP_DIR   ?= $(HOME)/hermes-backups
 AGE_RECIPIENT ?=
