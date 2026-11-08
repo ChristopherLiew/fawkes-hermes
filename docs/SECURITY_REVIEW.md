@@ -46,8 +46,15 @@ Either path gives root on the next sync, which means the deploy key, every secre
 ### M1. CI token grants root, and the workflow used `@master` ✅ fixed in design
 **Where:** DESIGN §9.4.
 **Issue:** `fly tokens create deploy` lets the holder `fly ssh console` as root. It was valid for one year, held as a plain repo secret, and passed to `superfly/flyctl-actions/setup-flyctl@master`, a mutable ref.
-**Fix applied (`.github/workflows/deploy-skills.yml`):** 90-day expiry, a GitHub `production` environment limited to `main`, branch protection with required `ci` checks, `permissions: contents: read`, actions pinned by full SHA (with Dependabot updates), `persist-credentials: false`, and a `validate` job gating `deploy`.
+**Fix applied (`.github/workflows/deploy-skills.yml`, `deploy-infra.yml`):** 90-day expiry, a GitHub `production` environment limited to `main` (applied), `permissions: contents: read`, actions pinned by full SHA (with Dependabot updates), `persist-credentials: false`, and a `validate` job gating `deploy`.
 **Monorepo note:** the token now sits in the same repo as infra. That's acceptable because PR-triggered workflows (`ci.yml`) never get the `production` environment, so a malicious PR can't read the token. Never add `pull_request_target` workflows to this repo.
+**GitHub Free limits (confirmed 2026-11-08):** branch protection and environment required reviewers aren't available for this private repo. Accepted risk, because only the owner has push access. Compensating controls:
+- The environment branch policy keeps the token on `main` only.
+- `deploy-infra` is `workflow_dispatch` only, with a typed version that must match `fly.toml`.
+- Both deploy workflows re-validate before acting and share one concurrency group.
+- Local pre-push gitleaks blocks a leaked secret before it reaches `main`.
+
+Revisit if you upgrade to Pro, or before adding any collaborator.
 🔎 Check whether your flyctl version supports a narrower token than `deploy` (for example a machine-exec-scoped token). If it does, use it.
 
 ### M2. Unpinned `npx -y` MCP server runs with a PAT in its env ✅ fixed in design

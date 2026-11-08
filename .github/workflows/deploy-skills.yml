@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-skills
+  group: fly-hermes-me # shared with deploy-infra: never sync and deploy at the same time
   cancel-in-progress: false # never interrupt a sync halfway
 
 env:

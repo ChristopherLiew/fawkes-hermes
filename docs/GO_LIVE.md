@@ -23,23 +23,19 @@ make setup && make lint                # first run downloads gitleaks; all hooks
 git add -A && git commit -m "..."      # if anything is uncommitted
 gh repo create fawkes-hermes --private --source . --push
 ```
-Then in GitHub → **Settings**:
-1. **Code security**: turn on *Secret scanning* and *Push protection*.
-2. **Actions → General**: set *Workflow permissions* to **Read repository contents**.
-3. Wait for the first `ci` run on `main` to go green (**Actions** tab).
-4. **Branches → Add rule** (or **Rules → Rulesets**) for `main`:
-   - Require a pull request before merging. Set approvals to **0**, since you're the only reviewer.
-   - Require these status checks: `secret scan + hooks`, `validate skills`, `fly.toml image pin`.
-   - Block force pushes and deletions.
-5. **Environments → New environment** named `production`. Under *Deployment branches*, choose **Selected branches** and add `main`.
+Repository settings (✅ = already applied on 2026-11-08 through `gh api`):
+1. ✅ **Actions → General:** workflow token is **read-only**, and Actions can't approve PRs.
+2. ✅ **Environments → `production`:** deployment branches limited to `main`. `FLY_API_TOKEN` goes here in step 8.3.
+3. ✅ First `ci` run on `main` is green.
 
-> 🔎 **Plan check:** for a **private** repo on GitHub Free, branch protection, rulesets and environment secrets may be unavailable; they need GitHub Pro. If you hit that limit:
-> - Remove the `environment: production` line from `deploy-skills.yml`.
-> - Store `FLY_API_TOKEN` as a plain repo secret (`gh secret set FLY_API_TOKEN`).
->
-> The job's `if: github.ref == 'refs/heads/main'` still keeps it to `main`, and only people with push access (just you) can create branches. Record this decision in SECURITY_REVIEW M1.
+**Not available on GitHub Free for private repos** (confirmed: the API returned "Upgrade to GitHub Pro"):
+- *Branch protection / rulesets:* `main` accepts direct pushes, so use PRs by habit (CICD "Local gate").
+- *Environment required reviewers:* there's no approval click, so `deploy-infra` is manual-dispatch only, with a typed version check.
+- *GitHub secret scanning / push protection:* replaced by gitleaks on commit, on push and in CI.
 
-✅ The repo is private, `ci` is green, and pushing straight to `main` is rejected (or you've accepted the Free-plan fallback).
+If you upgrade to Pro later: add branch protection on `main` requiring `secret scan + hooks`, `validate skills` and `fly.toml image pin`, plus yourself as a required reviewer on `production`. Then `deploy-infra` can be switched to trigger on merge.
+
+✅ The repo is private, the environment exists, and `ci` is green.
 
 ## 2. Telegram 👤 (DESIGN §1.1, §2)
 
@@ -134,6 +130,13 @@ gh workflow run deploy-skills && gh run watch
 ```
 ✅ The `deploy` job's *Verify published revision* step prints `published=<sha> expected=<sha>`.
 
+**8.5 Prove infra CD.** This redeploys the version that's already running, so it's harmless:
+```bash
+gh workflow run deploy-infra -f version=<vX.Y.Z in fly.toml> && gh run watch
+make webhook-info && make webhook-test
+```
+✅ The *Verify exactly one started machine running the pinned digest* step passes, and the bot still replies.
+
 ## 9. Operations setup
 
 - Cron jobs: `/cron add …` in Telegram (DESIGN §10).
@@ -146,5 +149,5 @@ gh workflow run deploy-skills && gh run watch
 - [ ] Every item in DESIGN **§15 Security checklist** is ticked
 - [ ] Every item in the SECURITY_REVIEW **Implementation gate** is ticked
 - [ ] Appendix items 1–8 in DESIGN verified; 🔎 notes resolved or recorded
-- [ ] `ci` is required on `main`; `deploy-skills` has succeeded at least once
+- [ ] `ci` green on `main`; `deploy-skills` and `deploy-infra` have each succeeded at least once
 - [ ] Rollback rehearsed once: `make sync-skills REF=<previous-sha>`, then back to `main`
