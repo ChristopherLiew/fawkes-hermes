@@ -1,24 +1,37 @@
-# --- Secrets: never commit ---
+# --- Secrets: never commit (pre-commit also blocks these by name) ---
 .env
 .env.*
 !.env.example
+!.env.local.example
+.envrc
 *.pem
 *.key
+*.p12
+*.pfx
 id_*
 *_deploy
 *_deploy.pub
 gh_pat
+age.key
 secrets/
 *.secret
+*credentials*.json
+fly.secrets*
 
-# --- Backups (contain memories/sessions) ---
-hermes-backup-*.tgz
+# --- Backups (contain memories, sessions and /opt/data/.env) ---
+hermes-backups/
+hermes-backup-*
 *.tgz
 *.tar.gz
 *.age
 
-# --- Fly local state ---
+# --- Scan reports (may contain matched secrets) ---
+gitleaks-report*
+*.sarif
+
+# --- Fly / tooling local state ---
 .fly/
+.claude/settings.local.json
 
 # --- OS / editor ---
 .DS_Store

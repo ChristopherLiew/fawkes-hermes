@@ -1,6 +1,6 @@
 # Security review: Hermes on Fly.io (pre-implementation)
 
-- **Scope:** `docs/DESIGN.md` (v4) and repository secret handling
+- **Scope:** `docs/DESIGN.md` (v4), monorepo CI/CD (`.github/workflows/`, `scripts/`) and repository secret handling
 - **Date:** 2026-11-08
 - **Status:** design fixes applied to DESIGN.md where marked ✅. Items marked 🔎 must be verified on first deploy.
 
@@ -11,7 +11,7 @@
 | Internet | `https://hermes-me.fly.dev:443` (webhook path only) | Inject updates, run up cost |
 | Content the agent reads (web pages, docs, group chat) | The model's context, through **prompt injection** | Get the agent to run commands, read secrets, escalate to root |
 | The agent process (UID 10000) | Everything under `/opt/data`, its own env, outbound network | Same as above, once injected |
-| Anyone who can push to `hermes-skills` / GitHub Actions | `FLY_API_TOKEN` → root SSH | Full machine takeover |
+| Anyone who can merge to `main` of this repo / run the `production` environment | `FLY_API_TOKEN` → root SSH; `skills/` → agent instructions | Full machine takeover; steer the agent |
 | A compromised laptop or repo | Local keys, git history | Credential theft |
 
 The main assumption in this review: **treat the agent as potentially hostile.** Every boundary between the agent (UID 10000) and root has to hold even if the agent is fully prompt-injected.
@@ -28,8 +28,8 @@ The main assumption in this review: **treat the agent as potentially hostile.** 
 
 Either path gives root on the next sync, which means the deploy key, every secret, and the whole volume.
 **Fix applied:**
-- The script lives in the `hermes-skills` repo and is streamed in by base64 over `fly ssh console`. It is never stored on the volume.
-- Every sync does a fresh shallow clone into `/root/` temp space, with hooks and symlinks disabled.
+- The script lives in this repo (`scripts/sync-skills.sh`) and is streamed in by base64 over `fly ssh console`. It is never stored on the volume.
+- Every sync fetches the exact `REF` (a CI commit SHA) at depth 1 into `/root/` temp space, with hooks and symlinks disabled. It refuses symlinks in `skills/` and publishes only `skills/`.
 - It publishes a **root-owned, read-only** copy without `.git/`, via staging and an atomic `mv -T`.
 - Before using the key, it checks that the key is a root-owned regular file with mode 600 and not a symlink.
 - The known_hosts line is embedded in the script instead of being read from the volume.
@@ -46,7 +46,8 @@ Either path gives root on the next sync, which means the deploy key, every secre
 ### M1. CI token grants root, and the workflow used `@master` ✅ fixed in design
 **Where:** DESIGN §9.4.
 **Issue:** `fly tokens create deploy` lets the holder `fly ssh console` as root. It was valid for one year, held as a plain repo secret, and passed to `superfly/flyctl-actions/setup-flyctl@master`, a mutable ref.
-**Fix applied:** 90-day expiry, a GitHub `production` environment limited to `main`, branch protection, `permissions: contents: read`, actions pinned by full SHA, and `persist-credentials: false`.
+**Fix applied (`.github/workflows/deploy-skills.yml`):** 90-day expiry, a GitHub `production` environment limited to `main`, branch protection with required `ci` checks, `permissions: contents: read`, actions pinned by full SHA (with Dependabot updates), `persist-credentials: false`, and a `validate` job gating `deploy`.
+**Monorepo note:** the token now sits in the same repo as infra. That's acceptable because PR-triggered workflows (`ci.yml`) never get the `production` environment, so a malicious PR can't read the token. Never add `pull_request_target` workflows to this repo.
 🔎 Check whether your flyctl version supports a narrower token than `deploy` (for example a machine-exec-scoped token). If it does, use it.
 
 ### M2. Unpinned `npx -y` MCP server runs with a PAT in its env ✅ fixed in design
@@ -84,7 +85,12 @@ Confirm it was revoked in BotFather, and purge any copies: old notes, chat logs,
 |---|---|
 | Ignore secrets, keys and backups | `.gitignore` |
 | A list of secret **names** only, never values | `.env.example` |
-| Pre-commit secret scanning (gitleaks with Telegram, OpenRouter and Fly token rules, plus `detect-private-key`) | `.pre-commit-config.yaml`, `.gitleaks.toml` |
+| **Commit hook:** gitleaks on staged changes (custom Telegram, OpenRouter and Fly rules, all verified against fake tokens), forbidden filenames (`.env*`, keys, `*_deploy`, backups), `detect-private-key`, skills validator | `.pre-commit-config.yaml`, `.gitleaks.toml` |
+| **Push hook:** gitleaks over the full history, so nothing leaves the laptop unscanned | `.pre-commit-config.yaml` (`pre-push`) |
+| **CI:** checksum-pinned gitleaks 8.30.1, all hooks plus a full-history scan on every PR | `.github/workflows/ci.yml` |
+| **GitHub:** Secret scanning + Push protection (server-side backstop) | repo settings (GO_LIVE step 1) |
+| Manual audit: `make scan` (history plus working tree, including ignored files) | `Makefile` |
+| No personal identifiers in tracked files: dashboard username and Telegram IDs are prompted at setup | DESIGN §5, `.env*.example` |
 | A dedicated personal commit identity | repo-local `git config user.email` |
 
 **One-time setup per clone:** `pre-commit install && pre-commit run --all-files`.
@@ -94,6 +100,6 @@ When the repo goes to GitHub, keep it **private** and turn on *Secret scanning* 
 
 Don't deploy until the following are done:
 - [ ] H2 verification plan is ready (know which toolsets you'll disable if secrets are visible)
-- [ ] `hermes-skills` repo has `main` protection and the `production` environment before `FLY_API_TOKEN` is added
-- [ ] Action SHAs and the image digest have been looked up and filled in
+- [ ] This repo has `main` protection (required `ci` checks) and the `production` environment before `FLY_API_TOKEN` is added
+- [ ] Image digest filled in `fly.toml` (`make image-digest`); action SHAs are already pinned
 - [ ] L3 confirmed
