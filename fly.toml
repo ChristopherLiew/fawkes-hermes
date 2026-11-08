@@ -1,0 +1,51 @@
+# fawkes-hermes on Fly.io. Design and rationale: docs/DESIGN.md §4. Deploy: deploy-infra workflow, or `make deploy`.
+app = "fawkes-hermes"
+primary_region = "sin"
+
+[build]
+  # Pinned by tag AND digest. Bump with: make image-digest VERSION=vX.Y.Z
+  image = "nousresearch/hermes-agent:v0.23.0@sha256:adb7890916de63245523492be8f68f9d2095fecbec4e2a6dab7960381f0fc002"
+
+# Overrides CMD only. The image ENTRYPOINT (s6 supervisor) stays intact.
+[processes]
+  app = "gateway run"
+
+[env]
+  TZ = "Asia/Singapore"            # cron fires on the machine clock
+  TELEGRAM_WEBHOOK_PORT = "8443"   # matches internal_port below
+  # Dashboard: private network only (nothing routes 9119 publicly; reach it with `make dashboard`)
+  HERMES_DASHBOARD = "1"
+  HERMES_DASHBOARD_PORT = "9119"
+  HERMES_DASHBOARD_HOST = "::"     # Fly private IPv6 (6PN); fall back to "fly-local-6pn" if the proxy hangs (DESIGN §8)
+
+[mounts]
+  source = "hermes_data"
+  destination = "/opt/data"
+
+# The ONLY public route: Telegram → 443 → 8443. Never add 9119 or 8642 here.
+[[services]]
+  processes = ["app"]
+  internal_port = 8443
+  protocol = "tcp"
+  auto_stop_machines = "off"       # must stay up for cron
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [services.concurrency]
+    type = "requests"
+    soft_limit = 20
+    hard_limit = 50
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [[services.tcp_checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "30s"
+
+[[vm]]
+  processes = ["app"]
+  size = "shared-cpu-1x"
+  memory = "2gb"
