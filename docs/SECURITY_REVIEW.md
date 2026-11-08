@@ -77,6 +77,11 @@ Basic auth is the only control between the dashboard and other apps on the priva
 ### L3. Compromised v1 bot token 🔎 verify
 Confirm it was revoked in BotFather, and purge any copies: old notes, chat logs, shell history (`history | grep -E '[0-9]{8,10}:'`).
 
+### Info: first-deploy observations (2026-11-08)
+- No s6 on Fly (PID 1 is `/fly/init`), so there's no supervision tree. The non-root boundary still holds: the gateway and dashboard both run as UID 10000.
+- Hermes starts a loopback-only API server on `127.0.0.1:8642` with an auto-generated key. It isn't in `[[services]]` and isn't reachable off-machine. Keep it that way.
+- Hermes logs that it ingested `OPENROUTER_API_KEY` into its credential pool, which enables spend. The key's credit limit is the cap.
+
 ### Info: things that are already right
 - Webhook protected by a secret header, a random path and a user allowlist; the §6.3 negative test is built in.
 - Only 443→8443 is public. The dashboard and API server go through the proxy only.
