@@ -6,6 +6,8 @@ A personal [Hermes Agent](https://hermes-agent.nousresearch.com/docs) deployment
 
 - **Go-live runbook (start here):** [docs/GO_LIVE.md](docs/GO_LIVE.md)
 - **CI/CD & release flow:** [docs/CICD.md](docs/CICD.md)
+- **Development handbook:** [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+- **Architecture & invariants:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - **Design / reference:** [docs/DESIGN.md](docs/DESIGN.md)
 - **Security review:** [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md)
 
