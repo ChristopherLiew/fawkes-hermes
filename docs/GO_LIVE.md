@@ -21,7 +21,7 @@ fly auth login
 cd ~/Desktop/hermes
 make setup && make lint                # first run downloads gitleaks; all hooks must pass
 git add -A && git commit -m "..."      # if anything is uncommitted
-gh repo create hermes --private --source . --push
+gh repo create fawkes-hermes --private --source . --push
 ```
 Then in GitHub → **Settings**:
 1. **Code security**: turn on *Secret scanning* and *Push protection*.

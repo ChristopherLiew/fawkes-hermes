@@ -5,7 +5,7 @@ How changes reach the running agent. Setup details live in [DESIGN.md](DESIGN.md
 ## One repo, two release paths
 
 ```
-                         ┌──────────────────── hermes (monorepo) ─────────────────────┐
+                         ┌──────────────── fawkes-hermes (monorepo) ──────────────────┐
                          │  fly.toml · docs/ · Makefile   │   skills/<name>/SKILL.md  │
                          └───────────────┬────────────────┴─────────────┬─────────────┘
    local: pre-commit (gitleaks, validate-skills) on every commit        │
