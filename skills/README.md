@@ -13,6 +13,7 @@ This directory holds the procedures the Hermes agent (`fawkes-hermes`) loads on 
 | [`weather`](weather/SKILL.md) | travel | NEA forecasts for Singapore, Open-Meteo elsewhere. Optional `DATA_GOV_SG_API_KEY`. |
 | [`itinerary`](itinerary/SKILL.md) | travel | Day-by-day trip plans with timed legs, costs, rain plans and sources. |
 | [`flights`](flights/SKILL.md) | travel | Compares and ranks flights via the Kiwi.com MCP. Research only; never books. |
+| [`telegram-format`](telegram-format/SKILL.md) | personal | Default layout for every Telegram message: scannable, phone-sized, per-case templates. |
 
 Keep this table in sync when you add or remove a skill.
 
