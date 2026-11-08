@@ -33,6 +33,7 @@ Either path gives root on the next sync, which means the deploy key, every secre
 - It publishes a **root-owned, read-only** copy without `.git/`, via staging and an atomic `mv -T`.
 - Before using the key, it checks that the key is a root-owned regular file with mode 600 and not a symlink.
 - The known_hosts line is embedded in the script instead of being read from the volume.
+- **PATH (found at first sync, fixed):** the image's PATH puts `/opt/data/.local/bin` (agent-owned, where pip entry points go) ahead of `/usr/bin`. That applies to root's `fly ssh` sessions too, so a planted `git`, `sh` or `base64` there would run as root. The script now pins `PATH=/usr/sbin:/usr/bin:/sbin:/bin` and uses `/usr/bin/ssh`. Every command root runs over `fly ssh` (CI and Makefile) uses absolute paths (`/bin/sh`, `/usr/bin/base64`, `/bin/cat`, `/bin/tar`, `/bin/rm`). At the time of the fix, the directory held only pip entry points, none shadowing a system binary. **Rule:** any root command on the machine uses absolute paths, including in `make ssh` sessions.
 
 ### H2. The agent can probably read its own runtime secrets 🔎 verify
 **Where:** DESIGN §5, §11.1.

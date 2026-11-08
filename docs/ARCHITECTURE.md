@@ -62,6 +62,7 @@ One personal Hermes Agent (the prebuilt `nousresearch/hermes-agent` image) runs 
 | Image pinned by `vX.Y.Z@sha256:` | Reproducible, tamper-evident | `make check-image`, `ci` |
 | Root never executes files from the volume | The agent can write there (SECURITY_REVIEW H1) | `sync-skills.sh` design (below) |
 | `sync-skills.sh` is streamed, never stored on the volume | Same | `make sync-skills`, `deploy-skills` |
+| Root commands over `fly ssh` use absolute paths; the sync pins a system-only `PATH` | The image PATH includes agent-writable `/opt/data/.local/bin` | `sync-skills.sh`, `deploy-skills`, Makefile |
 | Sync validates the deploy key (root-owned, mode 600, not a symlink) and fetches fresh into `/root` with hooks and symlinks off | Same | `sync-skills.sh` |
 | Skills on the machine are root-owned and read-only, with no `.git/` | The agent cannot rewrite its own instructions | `sync-skills.sh` |
 | No runtime secrets in GitHub; no personal identifiers in tracked files | Limits blast radius of a repo leak | gitleaks hooks and CI |

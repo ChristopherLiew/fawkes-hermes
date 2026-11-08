@@ -9,6 +9,9 @@
 # Trusts nothing under /opt/data except the deploy key, which it validates first.
 set -eu
 umask 077
+# The image PATH includes /opt/data/.local/bin, which the agent can write. Root must only run system binaries.
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
 : "${REPO:?REPO not set}"
 : "${REF:?REF not set}"
 KEY=/opt/data/.ssh/skills_deploy
@@ -23,7 +26,7 @@ STAGE=""
 trap 'rm -rf "$WORK"; [ -n "$STAGE" ] && rm -rf "$STAGE"' EXIT
 # Pinned GitHub host key: verify at docs.github.com → "GitHub's SSH key fingerprints"
 echo 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$WORK/known_hosts"
-export GIT_SSH_COMMAND="ssh -i $KEY -o IdentitiesOnly=yes -o UserKnownHostsFile=$WORK/known_hosts -o StrictHostKeyChecking=yes"
+export GIT_SSH_COMMAND="/usr/bin/ssh -i $KEY -o IdentitiesOnly=yes -o UserKnownHostsFile=$WORK/known_hosts -o StrictHostKeyChecking=yes"
 
 G="git -C $WORK/repo -c core.symlinks=false -c core.hooksPath=/dev/null"
 git init --quiet "$WORK/repo"

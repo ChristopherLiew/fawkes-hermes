@@ -60,13 +60,14 @@ jobs:
           REF: ${{ github.sha }}
         run: |
           B64=$( { printf 'REPO=%s\nREF=%s\n' "$REPO" "$REF"; cat scripts/sync-skills.sh; } | base64 -w0 )
-          flyctl ssh console -a "$FLY_APP" -C "sh -c \"echo $B64 | base64 -d | sh\""
+          # Absolute paths: root's PATH on the machine includes agent-writable /opt/data/.local/bin
+          flyctl ssh console -a "$FLY_APP" -C "/bin/sh -c \"echo $B64 | /usr/bin/base64 -d | /bin/sh\""
       - name: Verify published revision
         if: steps.token.outputs.ok == 'true'
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: |
-          got=$(flyctl ssh console -a "$FLY_APP" -C "cat /opt/data/skills-repo/.revision" | tr -d '\r\n ')
+          got=$(flyctl ssh console -a "$FLY_APP" -C "/bin/cat /opt/data/skills-repo/.revision" | tr -d '\r\n ')
           want=$(git rev-parse --short HEAD)
           echo "published=$got expected=$want"
           [ "$got" = "$want" ]

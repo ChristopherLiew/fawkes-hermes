@@ -193,7 +193,7 @@ sync-skills: skills-check ## Manually publish skills/ at REF (default main; must
 	@test -n "$(SKILLS_GIT)" || { echo "no git remote 'origin' (or pass SKILLS_GIT=git@github.com:<owner>/<repo>.git)"; exit 1; }
 	@echo "publishing $(SKILLS_GIT) @ $(REF)"
 	@set -euo pipefail; B64=$$( { printf 'REPO=%s\nREF=%s\n' "$(SKILLS_GIT)" "$(REF)"; cat scripts/sync-skills.sh; } | base64 | tr -d '\n'); \
-	  $(FLY) ssh console -a $(APP) -C "sh -c \"echo $$B64 | base64 -d | sh\""
+	  $(FLY) ssh console -a $(APP) -C "/bin/sh -c \"echo $$B64 | /usr/bin/base64 -d | /bin/sh\""
 
 snapshots: ## List volume snapshots
 	@for v in $$($(FLY) volumes list -a $(APP) --json | python3 -c 'import json,sys;[print(v["id"]) for v in json.load(sys.stdin)]'); do \
@@ -203,9 +203,9 @@ backup: ## Encrypted off-site backup to $(BACKUP_DIR) (needs AGE_RECIPIENT=age1.
 	@test -n "$(AGE_RECIPIENT)" || { echo "set AGE_RECIPIENT=age1..."; exit 1; }
 	@command -v age >/dev/null || { echo "brew install age"; exit 1; }
 	@mkdir -m 700 -p "$(BACKUP_DIR)"
-	$(FLY) ssh console -a $(APP) -C "sh -c 'umask 077; tar czf /root/hermes-backup.tgz -C /opt/data --exclude=./installs --exclude=./.ssh --exclude=./.skills-stage.* .'"
+	$(FLY) ssh console -a $(APP) -C "/bin/sh -c 'umask 077; /bin/tar czf /root/hermes-backup.tgz -C /opt/data --exclude=./installs --exclude=./.ssh --exclude=./.skills-stage.* .'"
 	@cd "$(BACKUP_DIR)" && umask 077 && \
 	  $(FLY) ssh sftp get /root/hermes-backup.tgz ./plain.tgz -a $(APP) && \
 	  age -r "$(AGE_RECIPIENT)" -o "hermes-backup-$$(date +%F).tgz.age" plain.tgz && rm -P plain.tgz
-	$(FLY) ssh console -a $(APP) -C "rm -f /root/hermes-backup.tgz"
+	$(FLY) ssh console -a $(APP) -C "/bin/rm -f /root/hermes-backup.tgz"
 	@echo "backup written to $(BACKUP_DIR)"
