@@ -225,15 +225,16 @@ DM the bot. It should reply. If no model is configured yet, the reply may be an 
 ### 7.1 Shell and helper
 `fly ssh console` logs you in as **root**. Run `hermes` as the `hermes` user, or it will create root-owned files the gateway can't read.
 ```bash
-fly ssh console -a fawkes-hermes
+make ssh    # root shell with PATH=/usr/sbin:/usr/bin:/sbin:/bin (see below)
 
 # --- inside ---
-HB=$(command -v hermes || echo /opt/hermes/.venv/bin/hermes)
-hx() { runuser -u hermes -- env HERMES_HOME=/opt/data "$HB" "$@"; }
+hx() { /usr/sbin/runuser -u hermes -- /usr/bin/env HERMES_HOME=/opt/data \
+  PATH=/opt/hermes/bin:/opt/hermes/.venv/bin:/usr/bin:/bin /opt/hermes/.venv/bin/hermes "$@"; }
 
 hx --version
 hx doctor          # fix anything it flags
 ```
+**Why the absolute paths:** the image's PATH puts `/opt/data/.local/bin` (agent-owned) ahead of `/usr/bin`, and a plain `fly ssh console` inherits it. A root shell would then run an agent-planted `ls`, `runuser` or `hermes`. `make ssh` starts bash with a system-only PATH. If you use `fly ssh console` directly, run `export PATH=/usr/sbin:/usr/bin:/sbin:/bin` first (SECURITY_REVIEW H1).
 
 ### 7.2 Model
 ```bash

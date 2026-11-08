@@ -103,8 +103,9 @@ status: ## Machine and release status
 logs: ## Tail logs
 	$(FLY) logs -a $(APP)
 
-ssh: ## Root shell on the machine (use `hx`, DESIGN §7.1)
-	$(FLY) ssh console -a $(APP)
+ssh: ## Root shell on the machine with a system-only PATH (use `hx`, DESIGN §7.1)
+	@# The image PATH includes agent-writable /opt/data/.local/bin; a root shell must never resolve commands there.
+	$(FLY) ssh console -a $(APP) --pty -C "/usr/bin/env PATH=/usr/sbin:/usr/bin:/sbin:/bin /bin/bash"
 
 dashboard: ## PROD dashboard (fawkes-hermes on Fly) via private tunnel → http://localhost:9119
 	$(FLY) proxy 9119:9119 -a $(APP)
