@@ -1,4 +1,6 @@
-# Fawkes Hermes Bot
+# fawkes-hermes
+
+**Fawkes**: the Hermes bot.
 
 A personal [Hermes Agent](https://hermes-agent.nousresearch.com/docs) deployment on Fly.io: Telegram webhook plus a private dashboard, always on, Singapore region. This is a monorepo for infra, docs and the agent's **skills**.
 
