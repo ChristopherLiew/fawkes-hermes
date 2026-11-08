@@ -1,0 +1,26 @@
+# Local dev instance of Hermes. Mirrors fly.toml, with three differences:
+#   - Telegram runs in POLLING mode (no TELEGRAM_WEBHOOK_URL) with a DEV bot token
+#   - the dashboard is published on 127.0.0.1 only
+#   - state lives in a local named volume, separate from production
+# Start it with `make local-up` (it reads the pinned image from fly.toml). See README "Run locally".
+name: hermes-local
+
+services:
+  hermes:
+    image: ${HERMES_IMAGE:?set HERMES_IMAGE or run via make (reads fly.toml)}
+    command: ["gateway", "run"]          # same CMD as fly.toml [processes]; the image ENTRYPOINT (s6) stays intact
+    env_file: .env.local                 # gitignored; copy from .env.local.example
+    environment:
+      TZ: Asia/Singapore
+      HERMES_DASHBOARD: "1"
+      HERMES_DASHBOARD_PORT: "9119"
+      HERMES_DASHBOARD_HOST: "0.0.0.0"   # inside the container only; the host binds 127.0.0.1 below
+    ports:
+      - "127.0.0.1:9119:9119"
+    volumes:
+      - hermes_local_data:/opt/data
+      - ./skills:/opt/data/skills-repo:ro   # live-edit skills locally; same path as production
+    restart: unless-stopped
+
+volumes:
+  hermes_local_data:

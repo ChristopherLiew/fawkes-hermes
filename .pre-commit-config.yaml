@@ -1,10 +1,44 @@
-# Secret scanning on every commit. Install once per clone:  pre-commit install
-# Run on demand:                                          pre-commit run --all-files
+# Secret and quality gates. `make setup` installs both hook types:
+#   pre-commit → scans what you're about to commit
+#   pre-push   → scans the whole history before anything leaves the laptop
+# gitleaks runs from the system binary (brew install gitleaks; CI installs a checksum-pinned copy).
+default_install_hook_types: [pre-commit, pre-push, commit-msg]
+default_stages: [pre-commit]
+
 repos:
-  - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.21.2
+  - repo: local
     hooks:
-      - id: gitleaks
+      - id: gitleaks-staged
+        name: gitleaks (staged changes)
+        entry: gitleaks git --pre-commit --staged --redact --no-banner --config .gitleaks.toml
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: gitleaks-history
+        name: gitleaks (full history, before push)
+        entry: gitleaks git --redact --no-banner --config .gitleaks.toml
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push, manual]
+      - id: forbid-secret-files
+        name: forbid secret-looking files
+        entry: "files that must never be committed (keys, .env, backups)"
+        language: fail
+        files: '(^|/)(\.env(\..*)?|.*\.(pem|key|p12|pfx|age|tgz)|id_(rsa|ed25519|ecdsa)(\.pub)?|.*_deploy(\.pub)?|gh_pat|age\.key|\.envrc)$'
+        exclude: '(^|/)\.env(\.local)?\.example$'
+      - id: no-co-author-trailer
+        name: commits have a single author (no Co-Authored-By)
+        entry: '(?i)^(co-authored-by:|.*generated with \[?claude)'
+        language: pygrep
+        stages: [commit-msg]
+      - id: validate-skills
+        name: validate skills
+        entry: python3 scripts/validate_skills.py skills
+        language: system
+        pass_filenames: false
+        files: ^skills/
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
