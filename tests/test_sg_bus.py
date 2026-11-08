@@ -89,6 +89,35 @@ class Stops(unittest.TestCase):
         self.assertEqual(bus.near_stops(self.stops, 1.3006, 103.8559, radius=10), [])
 
 
+class Nearby(unittest.TestCase):
+    stops = fixture("lta_bus_stops_sample.json")["value"]
+
+    def run_main(self, *argv):
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(bus, "load_stops", return_value=self.stops), \
+             mock.patch.object(bus, "lta", return_value=fixture("lta_bus_arrival_83139.json")), \
+             redirect_stdout(out), redirect_stderr(err):
+            code = bus.main(list(argv))
+        return code, out.getvalue(), err.getvalue()
+
+    def test_nearby_prints_arrivals_per_stop_with_distance(self):
+        code, out, _ = self.run_main("nearby", "1.3006", "103.8559", "--radius", "150", "--stops", "2")
+        self.assertEqual(code, 0)
+        self.assertIn("Stop 01059 Bugis Stn Exit B (29 m)", out)
+        self.assertEqual(out.count("Stop 0"), 2)
+
+    def test_outside_singapore_is_one_line_error(self):
+        for cmd in (("nearby",), ("stops", "near")):
+            code, out, err = self.run_main(*cmd, "35.68", "139.69")
+            self.assertEqual((code, out), (1, ""))
+            self.assertIn("not in Singapore", err)
+
+    def test_no_stops_in_radius(self):
+        code, _, err = self.run_main("nearby", "1.3006", "103.8559", "--radius", "5")
+        self.assertEqual(code, 1)
+        self.assertIn("no stops within", err)
+
+
 class TrainAlerts(unittest.TestCase):
     def test_normal(self):
         self.assertEqual(bus.format_train_alerts(bus.parse_train_alerts(fixture("lta_train_alerts_normal.json"))),

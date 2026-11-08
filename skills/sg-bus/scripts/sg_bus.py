@@ -4,6 +4,7 @@
   sg_bus.py arrivals <stop_code> [--service <no>]
   sg_bus.py stops search <query> [--limit 5]
   sg_bus.py stops near <lat> <lon> [--radius 400] [--limit 5]
+  sg_bus.py nearby <lat> <lon> [--radius 400] [--stops 3] [--service <no>]
   sg_bus.py train-alerts
 Add --json for structured output. Needs LTA_DATAMALL_KEY. Never prints the key.
 Field meanings: references/datamall-notes.md
@@ -197,6 +198,11 @@ def near_stops(stops: list[dict], lat: float, lon: float, radius: float = 400, l
     return sorted(out, key=lambda s: s["distance_m"])[:limit]
 
 
+def check_in_singapore(lat: float, lon: float) -> None:
+    if not (1.15 <= lat <= 1.50 and 103.55 <= lon <= 104.15):
+        raise ApiError(f"{lat}, {lon} is not in Singapore; ask for a Singapore stop code, road or landmark")
+
+
 def format_stops(stops: list[dict]) -> str:
     return "\n".join(
         f"{s['BusStopCode']}  {s['Description']}, {s['RoadName']}" + (f" · {s['distance_m']} m" if "distance_m" in s else "")
@@ -249,6 +255,12 @@ def main(argv: list[str] | None = None) -> int:
     sn.add_argument("lon", type=float)
     sn.add_argument("--radius", type=float, default=400)
     sn.add_argument("--limit", type=int, default=5)
+    n = sub.add_parser("nearby")
+    n.add_argument("lat", type=float)
+    n.add_argument("lon", type=float)
+    n.add_argument("--radius", type=float, default=400)
+    n.add_argument("--stops", type=int, default=3)
+    n.add_argument("--service")
     sub.add_parser("train-alerts")
     args = p.parse_args(argv)
 
@@ -263,6 +275,19 @@ def main(argv: list[str] | None = None) -> int:
             services = parse_arrivals(lta("v3/BusArrival", **params), now)
             out = ({"stop": code, "time": now.isoformat(), "services": services} if args.json
                    else format_arrivals(code, services, now, cached_stop_name(code), args.service))
+        elif args.cmd == "nearby":
+            check_in_singapore(args.lat, args.lon)
+            found = near_stops(load_stops(), args.lat, args.lon, args.radius, args.stops)
+            if not found:
+                raise ApiError(f"no stops within {args.radius:.0f} m; try --radius 800")
+            now = datetime.now(SGT)
+            results = []
+            for st in found:
+                params = {"BusStopCode": st["BusStopCode"], **({"ServiceNo": args.service} if args.service else {})}
+                results.append((st, parse_arrivals(lta("v3/BusArrival", **params), now)))
+            out = ([{**st, "services": svcs} for st, svcs in results] if args.json else "\n".join(
+                format_arrivals(st["BusStopCode"], svcs, now, f"{st['Description']} ({st['distance_m']} m)", args.service)
+                for st, svcs in results))
         elif args.cmd == "stops":
             stops = load_stops()
             if args.stops_cmd == "search":
@@ -271,6 +296,7 @@ def main(argv: list[str] | None = None) -> int:
                 if not found:
                     raise ApiError(f'no stop matches "{query}"; try a road name, landmark or: sg_bus.py stops near <lat> <lon>')
             else:
+                check_in_singapore(args.lat, args.lon)
                 found = near_stops(stops, args.lat, args.lon, args.radius, args.limit)
                 if not found:
                     raise ApiError(f"no stops within {args.radius:.0f} m; try --radius 800")
