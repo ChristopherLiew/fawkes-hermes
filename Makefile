@@ -68,9 +68,9 @@ local-check: ## Preflight: Docker running, image pinned, .env.local safe
 	  || { echo "Remove TELEGRAM_WEBHOOK_URL from .env.local (local must poll, not take over the webhook)"; exit 1; }
 	@echo "local preflight OK ($(HERMES_IMAGE))"
 
-local-up: local-check ## Start local Hermes (dev bot, polling) + dashboard on 127.0.0.1:9119
+local-up: local-check ## Start local Hermes (dev bot, polling) + dashboard on 127.0.0.1:9120
 	$(COMPOSE) up -d
-	@echo "dashboard: http://127.0.0.1:9119   logs: make local-logs"
+	@echo "LOCAL dashboard: http://127.0.0.1:9120   (prod is make dashboard → :9119)   logs: make local-logs"
 
 local-down: ## Stop local Hermes (keeps local state)
 	$(COMPOSE) down
@@ -106,7 +106,7 @@ logs: ## Tail logs
 ssh: ## Root shell on the machine (use `hx`, DESIGN §7.1)
 	$(FLY) ssh console -a $(APP)
 
-dashboard: ## Private dashboard on http://localhost:9119
+dashboard: ## PROD dashboard (fawkes-hermes on Fly) via private tunnel → http://localhost:9119
 	$(FLY) proxy 9119:9119 -a $(APP)
 
 restart: ## Restart the app (applies config / re-registers webhook)
