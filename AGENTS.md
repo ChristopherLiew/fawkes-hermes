@@ -11,6 +11,8 @@ A monorepo for one personal Hermes Agent (`nousresearch/hermes-agent`) on Fly.io
 - Docs:
   - `docs/GO_LIVE.md`: first-time setup
   - `docs/CICD.md`: release flow
+  - `docs/DEVELOPMENT.md`: development handbook (rules and how-to recipes)
+  - `docs/ARCHITECTURE.md`: system map, trust boundaries, invariants
   - `docs/DESIGN.md`: reference
   - `docs/SECURITY_REVIEW.md`: threat model
 

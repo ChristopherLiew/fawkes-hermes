@@ -2,7 +2,7 @@
 # Run `make` (or `make help`) to list targets. See docs/CICD.md for the release flow.
 
 SHELL := /bin/bash
-.SHELLFLAGS := -eu -o pipefail -c
+.SHELLFLAGS := -eu -o pipefail -c   # GNU make >= 3.82 only; macOS make 3.81 ignores it, so chained recipes set -e themselves
 .DEFAULT_GOAL := help
 
 APP          ?= fawkes-hermes
@@ -20,7 +20,7 @@ COMPOSE      ?= docker compose
 HX_LOCAL      = $(COMPOSE) exec -u hermes -e HERMES_HOME=/opt/data hermes hermes
 
 .PHONY: help setup lint scan check-image deploy status logs ssh dashboard restart \
-        image-digest releases secrets webhook-info webhook-test skills-check sync-skills snapshots backup \
+        image-digest releases secrets-init secrets webhook-info webhook-test skills-check sync-skills snapshots backup \
         adopt-pr local-check local-up local-down local-logs local-shell local-hx local-doctor local-reset
 
 help: ## List targets
@@ -115,6 +115,31 @@ restart: ## Restart the app (applies config / re-registers webhook)
 releases: ## List releases (for rollback)
 	$(FLY) releases -a $(APP)
 
+secrets-init: ## Set all runtime secrets via hidden prompts (run in YOUR terminal; values never echoed/stored)
+	@echo "Values are read silently, sent straight to Fly and never echoed, logged or written to disk."
+	@set -euo pipefail; \
+	  read -rsp "Telegram bot token (NEW, never pasted anywhere): " BOT; echo; \
+	  read -rsp "OpenRouter API key: " ORK; echo; \
+	  read -rsp "Telegram user ID(s), comma-separated: " TGID; echo; \
+	  read -rsp "Dashboard username: " DU; echo; \
+	  read -rsp "Dashboard password (blank = generate): " DP; echo; \
+	  [ -n "$$DP" ] || { DP=$$(openssl rand -base64 24); echo "Generated a dashboard password; it will be shown once at the end."; GEN=1; }; \
+	  case "$$BOT" in *:*) ;; *) echo "bot token looks wrong"; exit 1;; esac; \
+	  case "$$TGID" in *[!0-9,]*|"") echo "user ID must be numeric"; exit 1;; esac; \
+	  WPATH="/tg-$$(openssl rand -hex 12)"; \
+	  printf '%s\n' \
+	    "TELEGRAM_BOT_TOKEN=$$BOT" "TELEGRAM_ALLOWED_USERS=$$TGID" \
+	    "TELEGRAM_WEBHOOK_URL=https://$(APP).fly.dev$$WPATH" "TELEGRAM_WEBHOOK_SECRET=$$(openssl rand -hex 32)" \
+	    "OPENROUTER_API_KEY=$$ORK" \
+	    "HERMES_DASHBOARD_BASIC_AUTH_USERNAME=$$DU" "HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=$$DP" \
+	    "HERMES_DASHBOARD_BASIC_AUTH_SECRET=$$(openssl rand -hex 32)" \
+	  | $(FLY) secrets import --stage -a $(APP) >/dev/null \
+	  || { echo "FAILED: secrets were NOT staged (nothing to save)"; exit 1; }; \
+	  echo "Staged 8 secrets on $(APP) (applied on next deploy)."; \
+	  echo "Save to your password manager NOW: webhook path = $$WPATH"; \
+	  [ -z "$${GEN:-}" ] || echo "Save to your password manager NOW: dashboard password = $$DP"; \
+	  unset BOT ORK TGID DU DP WPATH
+
 secrets: ## List secret NAMES and digests (never values)
 	$(FLY) secrets list -a $(APP)
 
@@ -154,7 +179,7 @@ skills-check: ## Validate skills/ (frontmatter, names, no symlinks) + shellcheck
 sync-skills: skills-check ## Manually publish skills/ at REF (default main; must be pushed) to the Fly machine
 	@test -n "$(SKILLS_GIT)" || { echo "no git remote 'origin' (or pass SKILLS_GIT=git@github.com:<owner>/<repo>.git)"; exit 1; }
 	@echo "publishing $(SKILLS_GIT) @ $(REF)"
-	@B64=$$( { printf 'REPO=%s\nREF=%s\n' "$(SKILLS_GIT)" "$(REF)"; cat scripts/sync-skills.sh; } | base64 | tr -d '\n'); \
+	@set -euo pipefail; B64=$$( { printf 'REPO=%s\nREF=%s\n' "$(SKILLS_GIT)" "$(REF)"; cat scripts/sync-skills.sh; } | base64 | tr -d '\n'); \
 	  $(FLY) ssh console -a $(APP) -C "sh -c \"echo $$B64 | base64 -d | sh\""
 
 snapshots: ## List volume snapshots
