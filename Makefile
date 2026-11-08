@@ -21,7 +21,7 @@ HX_LOCAL      = $(COMPOSE) exec -u hermes -e HERMES_HOME=/opt/data hermes hermes
 
 .PHONY: help setup lint scan check-image deploy status logs ssh dashboard restart \
         image-digest releases secrets webhook-info webhook-test skills-check sync-skills snapshots backup \
-        local-check local-up local-down local-logs local-shell local-hx local-doctor local-reset
+        adopt-pr local-check local-up local-down local-logs local-shell local-hx local-doctor local-reset
 
 help: ## List targets
 	@awk 'BEGIN{FS=":.*## "} /^[a-zA-Z_-]+:.*## /{printf "  \033[36m%-14s\033[0m %s\n",$$1,$$2}' $(MAKEFILE_LIST)
@@ -131,6 +131,19 @@ webhook-test: ## Unauthenticated POST must return 4xx (prompts for webhook path)
 	  case $$code in 4??) echo "OK: $$code (secret check enforced)";; \
 	    200) echo "FAIL: 200 — secret header NOT enforced"; exit 1;; \
 	    *) echo "FAIL: $$code — check fly logs"; exit 1;; esac
+
+## ---- Dependencies ----------------------------------------------------
+
+adopt-pr: ## Re-apply a Dependabot PR as YOUR commit on main, push, close the PR (PR=<n>)
+	@test -n "$(PR)" || { echo "usage: make adopt-pr PR=<number>"; exit 1; }
+	@git diff --quiet && git diff --cached --quiet || { echo "working tree not clean"; exit 1; }
+	@author=$$(gh pr view $(PR) --json author --jq .author.login); \
+	  case "$$author" in *dependabot*) ;; *) echo "PR $(PR) is by $$author, not Dependabot; merge it normally"; exit 1;; esac
+	git switch main && git pull --ff-only
+	gh pr diff $(PR) | git apply --index
+	git commit -m "$$(gh pr view $(PR) --json title --jq .title) (adopted from #$(PR))"
+	git push
+	gh pr close $(PR) --delete-branch --comment "Applied as $$(git rev-parse --short HEAD) under the sole-author policy (AGENTS.md)."
 
 ## ---- Skills & backups -----------------------------------------------
 

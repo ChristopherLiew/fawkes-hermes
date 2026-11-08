@@ -36,10 +36,18 @@ jobs:
           tar -xzf "$f" gitleaks && sudo install -m 0755 gitleaks /usr/local/bin/gitleaks && rm -f "$f" gitleaks
       - run: pip install pre-commit==4.7.0
       - run: pre-commit run --all-files --show-diff-on-failure
-      - name: single-author commits (no Co-Authored-By trailers)
+      - name: single-author commits (no Co-Authored-By, no bot authors)
+        if: github.actor != 'dependabot[bot]' # Dependabot PRs are alerts; adopt them with `make adopt-pr`
+        env:
+          # cc762ce: one-off Dependabot commit kept in history by owner decision (2026-11-08)
+          ALLOWED_BOT_COMMITS: cc762ce
         run: |
           if git log --format=%B | grep -iqE '^co-authored-by:'; then
             echo "::error::Co-Authored-By trailer found in history; commits must have the repo owner as sole author"; exit 1
+          fi
+          bad=$(git log --format='%h %an' | grep -iE '\[bot\]|bot$' | grep -vE "^($(echo "$ALLOWED_BOT_COMMITS" | tr ' ' '|'))" || true)
+          if [ -n "$bad" ]; then
+            echo "::error::bot-authored commits found (adopt Dependabot PRs with make adopt-pr instead of merging):"; echo "$bad"; exit 1
           fi
       - name: gitleaks over full history
         run: pre-commit run gitleaks-history --hook-stage manual --all-files

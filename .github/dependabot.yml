@@ -1,4 +1,5 @@
-# Keeps the SHA-pinned GitHub Actions up to date through reviewed PRs.
+# ALERTS ONLY: Dependabot PRs tell you an action has an update. Don't merge them.
+# Run `make adopt-pr PR=<n>` to re-apply the change as your own commit (sole-author policy, AGENTS.md).
 version: 2
 updates:
   - package-ecosystem: github-actions
