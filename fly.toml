@@ -6,9 +6,12 @@ primary_region = "sin"
   # Pinned by tag AND digest. Bump with: make image-digest VERSION=vX.Y.Z
   image = "nousresearch/hermes-agent:v0.23.0@sha256:adb7890916de63245523492be8f68f9d2095fecbec4e2a6dab7960381f0fc002"
 
-# Overrides CMD only. The image ENTRYPOINT (s6 supervisor) stays intact.
+# Overrides CMD only; the image ENTRYPOINT stays intact. On Fly, /fly/init is PID 1, so the image skips
+# s6-overlay ("not PID 1 ... supervised services are unavailable"), and the s6 dashboard service never starts.
+# We start it here: a restart loop in the background, with the gateway in the foreground. The image's
+# main-wrapper drops `sh` to the hermes user (UID 10000). If the gateway exits, the machine restarts.
 [processes]
-  app = "gateway run"
+  app = "sh -c 'while :; do hermes dashboard --host $HERMES_DASHBOARD_HOST --port $HERMES_DASHBOARD_PORT --no-open; sleep 5; done & exec hermes gateway run'"
 
 [env]
   TZ = "Asia/Singapore"            # cron fires on the machine clock
