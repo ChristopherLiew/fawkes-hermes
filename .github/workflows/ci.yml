@@ -63,6 +63,22 @@ jobs:
       - run: python3 scripts/validate_skills.py skills
       - run: shellcheck scripts/sync-skills.sh
 
+  tests:
+    name: skill tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11" # oldest Python the skill scripts must run on
+      - run: pip install pyyaml==6.0.2 # only for the frontmatter YAML check; the scripts are stdlib-only
+      - name: unittest (fixtures only; live API tests are skipped, CI holds no API keys)
+        env:
+          REQUIRE_YAML: "1"
+        run: python -m unittest discover -s tests -v
+
   infra:
     name: fly.toml image pin
     runs-on: ubuntu-latest

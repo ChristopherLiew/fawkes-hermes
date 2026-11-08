@@ -28,6 +28,8 @@ Steps marked 👤 need you, because they involve a browser login, BotFather or a
 | 14 | `GH_PAT` for the GitHub MCP (fine-grained, read-only) | Optional | github.com → Settings → Developer settings | Fly secret | DESIGN §11 |
 | 15 | Dev bot token + dev OpenRouter key | Optional | @BotFather / OpenRouter | `.env.local` (gitignored) | `make local-up` |
 | 16 | `MODAL_TOKEN_ID` / `_SECRET` | Optional (friends app) | modal.com | Fly secret on the friends app | DESIGN §12 |
+| 17 | `LTA_DATAMALL_KEY` (`sg-bus` skill) | For `sg-bus` | datamall.lta.gov.sg → Request for API Access | `.env.local` → Fly secret via `make skill-secrets` | [TRAVEL_SKILLS](TRAVEL_SKILLS.md) |
+| 18 | `DATA_GOV_SG_API_KEY` (`weather` skill) | Optional | data.gov.sg → API keys | `.env.local` → Fly secret via `make skill-secrets` | [TRAVEL_SKILLS](TRAVEL_SKILLS.md) |
 
 Claude (or any agent working in this repo) needs **none** of these values. It only needs you to have run the logins in #1–2. You type secrets at hidden `read -s` prompts or pipe them between CLIs.
 

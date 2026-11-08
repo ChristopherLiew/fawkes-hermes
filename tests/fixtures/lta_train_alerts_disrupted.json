@@ -1,0 +1,22 @@
+{
+ "odata.metadata": "https://datamall2.mytransport.sg/ltaodataservice/$metadata#TrainServicesAlerts",
+ "value": {
+  "Status": 2,
+  "AffectedSegments": [
+   {
+    "Line": "NEL",
+    "Direction": "Punggol",
+    "Stations": "NE1,NE3,NE4,NE5,NE6",
+    "FreePublicBus": "NE1,NE3,NE4,NE5,NE6",
+    "FreeMRTShuttle": "NE1,NE3,NE4,NE5,NE6",
+    "MRTShuttleDirection": "Punggol"
+   }
+  ],
+  "Message": [
+   {
+    "Content": "1710hrs: NEL - No train service between Harbourfront to Dhoby Ghaut stations towards Punggol station due to a signalling fault. Free bus rides are available at designated bus stops.",
+    "CreatedDate": "2017-12-01 17:54:21"
+   }
+  ]
+ }
+}

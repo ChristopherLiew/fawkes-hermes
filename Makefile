@@ -20,7 +20,7 @@ COMPOSE      ?= docker compose
 HX_LOCAL      = $(COMPOSE) exec -u hermes -e HERMES_HOME=/opt/data hermes hermes
 
 .PHONY: help setup lint scan check-image deploy status logs ssh dashboard restart \
-        image-digest releases secrets-init secrets webhook-info webhook-test skills-check sync-skills snapshots backup \
+        image-digest releases secrets-init secrets skill-secrets webhook-info webhook-test skills-check test test-live sync-skills snapshots backup \
         adopt-pr local-check local-up local-down local-logs local-shell local-hx local-doctor local-reset
 
 help: ## List targets
@@ -172,9 +172,22 @@ adopt-pr: ## Re-apply a Dependabot PR as YOUR commit on main, push, close the PR
 
 ## ---- Skills & backups -----------------------------------------------
 
-skills-check: ## Validate skills/ (frontmatter, names, no symlinks) + shellcheck the sync script
+skills-check: ## Validate skills/ (frontmatter, names, no symlinks) + skill tests + shellcheck the sync script
 	python3 scripts/validate_skills.py skills
+	python3 -m unittest discover -s tests
 	@if command -v shellcheck >/dev/null; then shellcheck scripts/sync-skills.sh; else echo "shellcheck not installed (brew install shellcheck); CI runs it"; fi
+
+test: ## Skill script tests against recorded fixtures (stdlib unittest, no network)
+	python3 -m unittest discover -s tests -v
+
+test-live: ## Same, plus live API calls (keys from gitignored .env.local; never printed)
+	SKILLS_LIVE=1 python3 -m unittest discover -s tests -v
+
+skill-secrets: ## Push LTA_DATAMALL_KEY + DATA_GOV_SG_API_KEY from .env.local to Fly via stdin (restarts the machine)
+	@test -f .env.local || { echo "no .env.local (see .env.local.example)"; exit 1; }
+	@grep -Eq '^(LTA_DATAMALL_KEY|DATA_GOV_SG_API_KEY)=.+' .env.local || { echo "no skill keys set in .env.local"; exit 1; }
+	@set -euo pipefail; grep -E '^(LTA_DATAMALL_KEY|DATA_GOV_SG_API_KEY)=.+' .env.local | $(FLY) secrets import -a $(APP)
+	@$(FLY) secrets list -a $(APP) | grep -E 'LTA_DATAMALL_KEY|DATA_GOV_SG_API_KEY'
 
 sync-skills: skills-check ## Manually publish skills/ at REF (default main; must be pushed) to the Fly machine
 	@test -n "$(SKILLS_GIT)" || { echo "no git remote 'origin' (or pass SKILLS_GIT=git@github.com:<owner>/<repo>.git)"; exit 1; }

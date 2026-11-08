@@ -48,6 +48,8 @@ make status | logs | ssh | restart | releases | secrets
 make dashboard                     # private dashboard at http://localhost:9119 via fly proxy (docs/DESIGN.md §8)
 make webhook-info | webhook-test   # Telegram webhook checks (inputs prompted, hidden)
 make sync-skills [REF=<sha>]       # manual skills publish (default: origin/main)
+make test | test-live              # skill script tests (fixtures | plus live APIs, keys from .env.local)
+make skill-secrets                 # push skill API keys from .env.local to Fly (restarts the machine)
 make backup AGE_RECIPIENT=age1...  # encrypted backup to ~/hermes-backups
 ```
 
@@ -91,7 +93,8 @@ make local-logs | local-doctor | local-down | local-reset
 │   ├── workflows/deploy-skills.yml   # main: publish skills (production env)
 │   ├── workflows/deploy-infra.yml    # manual: fly deploy + verify (production env)
 │   └── dependabot.yml          # action-update alerts → make adopt-pr PR=<n>
-├── docs/                       # GO_LIVE, CICD, DESIGN, SECURITY_REVIEW
+├── tests/                      # skill script tests + recorded API fixtures (never published)
+├── docs/                       # GO_LIVE, CICD, DESIGN, SECURITY_REVIEW, TRAVEL_SKILLS
 ├── AGENTS.md · CLAUDE.md       # agent guidance (CLAUDE.md imports AGENTS.md)
 ├── Makefile · compose.yaml
 ├── .env.example · .env.local.example

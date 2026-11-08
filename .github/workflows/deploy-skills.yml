@@ -8,6 +8,7 @@ on:
     paths:
       - "skills/**"
       - "scripts/sync-skills.sh"
+      - "tests/**"
       - ".github/workflows/deploy-skills.yml"
   workflow_dispatch: # manual re-sync from the Actions tab
 
@@ -29,6 +30,7 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 scripts/validate_skills.py skills
+      - run: python3 -m unittest discover -s tests # stdlib only; the YAML check runs in ci.yml
       - run: shellcheck scripts/sync-skills.sh
 
   deploy:

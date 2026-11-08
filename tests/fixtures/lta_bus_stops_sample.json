@@ -1,0 +1,75 @@
+{
+ "odata.metadata": "https://datamall2.mytransport.sg/ltaodataservice/$metadata#BusStops",
+ "value": [
+  {
+   "BusStopCode": "01059",
+   "RoadName": "Victoria St",
+   "Description": "Bugis Stn Exit B",
+   "Latitude": 1.30075679526626,
+   "Longitude": 103.85611040457583
+  },
+  {
+   "BusStopCode": "01113",
+   "RoadName": "Victoria St",
+   "Description": "Bugis Stn Exit A",
+   "Latitude": 1.30117297541547,
+   "Longitude": 103.8561140106393
+  },
+  {
+   "BusStopCode": "01112",
+   "RoadName": "Victoria St",
+   "Description": "Opp Bugis Stn Exit C",
+   "Latitude": 1.30009212839081,
+   "Longitude": 103.85520027125814
+  },
+  {
+   "BusStopCode": "01119",
+   "RoadName": "Victoria St",
+   "Description": "Aft Bugis Stn Exit C",
+   "Latitude": 1.2996041093804,
+   "Longitude": 103.85512934079571
+  },
+  {
+   "BusStopCode": "01139",
+   "RoadName": "Nth Bridge Rd",
+   "Description": "Bugis Stn/Parkview Sq",
+   "Latitude": 1.30033057855542,
+   "Longitude": 103.85716080665901
+  },
+  {
+   "BusStopCode": "07551",
+   "RoadName": "Rochor Rd",
+   "Description": "Fu Lu Shou Cplx",
+   "Latitude": 1.30171975809706,
+   "Longitude": 103.8546132267025
+  },
+  {
+   "BusStopCode": "01012",
+   "RoadName": "Victoria St",
+   "Description": "Hotel Grand Pacific",
+   "Latitude": 1.29684825487647,
+   "Longitude": 103.85253591654006
+  },
+  {
+   "BusStopCode": "99171",
+   "RoadName": "Nicoll Dr",
+   "Description": "Changi Beach CP 2",
+   "Latitude": 1.391161,
+   "Longitude": 103.990992
+  },
+  {
+   "BusStopCode": "99181",
+   "RoadName": "Telok Paku Rd",
+   "Description": "Aft Changi Village Rd",
+   "Latitude": 1.387793,
+   "Longitude": 103.988393
+  },
+  {
+   "BusStopCode": "99189",
+   "RoadName": "Telok Paku Rd",
+   "Description": "S'pore Aviation Ac",
+   "Latitude": 1.3884141666958,
+   "Longitude": 103.9897163888532
+  }
+ ]
+}

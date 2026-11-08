@@ -60,7 +60,8 @@ metadata:
 ## Security rules (this deployment)
 
 - **No secrets in skills**: no tokens, keys, private URLs or personal identifiers. gitleaks scans every commit.
-- `scripts/` inside a skill runs with the agent's permissions. Keep scripts short, readable and free of network side effects unless that's the point. Never `curl | sh`, and never write outside the session workspace.
+- `scripts/` inside a skill runs with the agent's permissions. Keep scripts short, readable and free of network side effects unless that's the point. Never `curl | sh`, and never write outside the session workspace, except a cache under `${SKILLS_CACHE_DIR:-${XDG_CACHE_HOME:-~/.cache}}/fawkes/<skill>/`. Skill directories are read-only on the server.
+- Scripts are stdlib-only, take keys from the environment, send them only in headers, and never print them. Add tests in `tests/` (stdlib `unittest`, recorded fixtures with keys stripped, live calls behind `SKILLS_LIVE=1`).
 - Don't write skills that weaken the deployment's defaults. That includes changing `approvals.mode`, disabling allowlists, exposing ports, reading `/opt/data/.env`, or calling `fly`.
 - A skill that needs a new secret declares it under `required_environment_variables`. The value is then set as a Fly secret by the owner (`fly secrets set`). It never goes in the repo.
 - On the server, skills are read-only to the agent. If Hermes suggests an improvement, make it here through a PR. Don't let it create a same-named local copy, which would shadow this one.

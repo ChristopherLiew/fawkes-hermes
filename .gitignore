@@ -33,6 +33,11 @@ gitleaks-report*
 .fly/
 .claude/settings.local.json
 
+# --- Python / scratch task files ---
+__pycache__/
+*.pyc
+TASK-*.md
+
 # --- OS / editor ---
 .DS_Store
 .vscode/

@@ -444,7 +444,15 @@ mcp_servers:
 
 MCP subprocesses only receive the variables listed under `env`. `hx mcp` opens the built-in catalog of approved servers.
 
-### 11.2 Plugins
+### 11.2 Kiwi.com flight search (remote MCP, no key)
+Used by the `flights` skill ([TRAVEL_SKILLS.md](TRAVEL_SKILLS.md)). Register it inside `make ssh`:
+```bash
+hx mcp add kiwi --url https://mcp.kiwi.com
+hx mcp configure kiwi        # enable search-flight only; feedback-to-devs stays off
+```
+The equivalent config is `mcp_servers.kiwi: {url: https://mcp.kiwi.com, tools: {include: [search-flight]}}`. It's a remote HTTP server: no package to pin and no secret in its environment. Its results reach the model as untrusted data (SECURITY_REVIEW M5).
+
+### 11.3 Plugins
 Plugins run inside the gateway, so only install ones you've read. See `hx plugins --help`.
 ```python
 import httpx

@@ -1,0 +1,46 @@
+{
+ "odata.metadata": "https://datamall2.mytransport.sg/ltaodataservice/v3/BusArrival",
+ "BusStopCode": "83139",
+ "Services": [
+  {
+   "ServiceNo": "155",
+   "Operator": "SBST",
+   "NextBus": {
+    "OriginCode": "52009",
+    "DestinationCode": "84009",
+    "EstimatedArrival": "2026-11-09T00:27:40+08:00",
+    "Monitored": 1,
+    "Latitude": "1.3182836666666666",
+    "Longitude": "103.90007666666666",
+    "VisitNumber": "1",
+    "Load": "SEA",
+    "Feature": "WAB",
+    "Type": "SD"
+   },
+   "NextBus2": {
+    "OriginCode": "52009",
+    "DestinationCode": "84009",
+    "EstimatedArrival": "2026-11-09T00:46:32+08:00",
+    "Monitored": 1,
+    "Latitude": "1.3313098333333333",
+    "Longitude": "103.879052",
+    "VisitNumber": "1",
+    "Load": "SEA",
+    "Feature": "WAB",
+    "Type": "SD"
+   },
+   "NextBus3": {
+    "OriginCode": "",
+    "DestinationCode": "",
+    "EstimatedArrival": "",
+    "Monitored": 0,
+    "Latitude": "",
+    "Longitude": "",
+    "VisitNumber": "",
+    "Load": "",
+    "Feature": "",
+    "Type": ""
+   }
+  }
+ ]
+}
