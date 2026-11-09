@@ -61,7 +61,7 @@ jobs:
         with:
           persist-credentials: false
       - run: python3 scripts/validate_skills.py skills
-      - run: shellcheck scripts/sync-skills.sh
+      - run: shellcheck scripts/sync-skills.sh scripts/require-merged-pr.sh
 
   tests:
     name: skill tests
