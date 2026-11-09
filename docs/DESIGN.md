@@ -393,6 +393,8 @@ Then run `fly apps restart fawkes-hermes` and check with `hx skills list`.
 
 **Shadowing:** Hermes resolves skills in this order: project, then local (`/opt/data/skills/`), then `skills.create_dir`, then `external_dirs`. A skill the agent creates with the same name as a repo skill **silently overrides** it. If `hx skills list` shows a repo skill coming from the wrong path, delete the local copy and land its changes here through a PR. Authoring rules are in `skills/AGENTS.md`.
 
+**Bundled `maps` replaced:** Hermes's bundled `maps` skill hard-codes its script at `~/.hermes/skills/maps/scripts/maps_client.py`, but bundled skills are synced to `/opt/data/skills/productivity/maps`, so every call fails with `No such file or directory`. The repo ships its own `maps` (vendored client, `${HERMES_SKILL_DIR}` path). Delete the bundled copy once so it stops shadowing the repo skill: `make ssh`, then `rm -rf /opt/data/skills/productivity/maps`. The bundled sync never re-adds a skill the user deleted. Re-check after each image bump with `hx skills list | grep maps`.
+
 **HTTPS fallback (if the image has no `ssh`):** create a fine-grained GitHub PAT with *Contents: read-only* on this repo. Store it at `/opt/data/.ssh/gh_pat` (root-owned, mode 600, validated like `KEY`). Pass it with `git -c http.extraHeader="Authorization: Basic …"` instead of putting it in the URL.
 
 ### 9.4 Auto-sync on merge
