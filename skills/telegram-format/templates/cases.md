@@ -91,3 +91,20 @@ Frees about 300 MB. Not reversible.
 
 Reply **yes** to proceed.
 ```
+
+## 10. Schedule or plan (a day, an agenda)
+```
+**📍 Sat 14 Nov · Joo Chiat**
+⛅ 31° / 26° · rain 40% after 3pm
+
+`09:30` ☕ **Chin Mee Chin** · kaya toast · 45 min
+↓ *🚶 8 min*
+`10:30` 📸 **Koon Seng Road** · Peranakan houses · free
+`12:00` 🍜 **Lunch** · laksa, ~S$8
+
+> ☔ **Rain:** Koon Seng → Peranakan Museum
+> 💴 **Cost:** ≈ S$40
+
+**> 🔗 Sources: [¹ site](https://example.com)||
+```
+Times in inline code, one emoji and a bold name per row, legs on `↓` lines, extras in a quote, sources collapsed.

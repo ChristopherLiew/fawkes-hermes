@@ -1,19 +1,31 @@
-**{ORIGIN} → {DEST} · {dates} · {pax}, {cabin}**  _(checked {date} {time} {tz}; fares change)_
-_Assumed: {defaults used, e.g. "1 checked bag, economy, SGD"}_
+# Flight comparison layout (Telegram first)
 
-| | Option | Total ({ccy}) | Time | Stops | Dep → Arr (local) | Notes |
-|---|---|---|---|---|---|---|
-| 🏷 | {carriers, airport} | {total} | {h m} | {n} ({longest layover}) | {dep} → {arr}{+1} | {bags / possible self-transfer / redeye} |
-| ⭐ | … | | | | | |
-| ⚡ | … | | | | | |
+Write normal Markdown. The Telegram gateway converts `**bold**`, `*italic*`, `` `code` ``, links and `>` quote lines, but not tables. One message, under about 1,800 characters.
 
-**Pick:** {one-line recommendation and why}
-**Cheaper dates:** {±N-day finds, or "none cheaper in the window"}
-**Links:** [Kiwi]({bookingUrl}) · [Airline]({airline site})
-_Cheapest found on Kiwi, cross-checked with {source}. Book on the site yourself; nothing has been booked._
+```
+✈️ **{ORIGIN} → {DEST}** · {dates} · {pax}, {cabin}
+*Checked {date} {time} {tz} · fares change · assumed {defaults, e.g. 1 checked bag}*
 
-**Telegram** (no table rendering; see the `telegram-format` skill): send each row as one bullet instead:
-`🏷 **{total} {ccy}** · {carriers} · {dep} → {arr} · {h m}, {n} stop(s) · {notes} · [book]({bookingUrl})`
+🏷 **{ccy} {total}** · cheapest sensible
+{carriers} · `{dep}` → `{arr}`{+1} · {h m} · {n} stop ({layover city} {h m})
+{bags · self-transfer? · redeye?} · [Book]({bookingUrl})
 
-<!-- 🏷 cheapest sensible · ⭐ best value · ⚡ fastest · 🛋 most comfortable (optional). Max 4 rows.
-     For a return trip, show the outbound and return in Dep → Arr as two lines separated by <br>. -->
+⭐ **{ccy} {total}** · best value
+{carriers} · `{dep}` → `{arr}` · {h m} · nonstop
+{notes} · [Book]({bookingUrl})
+
+⚡ **{ccy} {total}** · fastest
+{carriers} · `{dep}` → `{arr}` · {h m} · nonstop
+{notes} · [Book]({bookingUrl})
+
+👉 **Pick {⭐}:** {one-line reason}
+> 📅 **Cheaper dates:** {±N-day finds, or "none cheaper in the window"}
+> 🔎 Cheapest found on Kiwi, cross-checked with {source}. Nothing has been booked.
+```
+
+## Rules
+- One block per option: line 1 is the price + label, line 2 is the schedule, line 3 is the catches + link. Put a blank line between options.
+- Labels: 🏷 cheapest sensible · ⭐ best value · ⚡ fastest · 🛋 most comfortable (only if comfort matters). At most 4 options.
+- Times are local, in inline code. `+1` marks next-day arrival.
+- For a return trip, give line 2 twice: `Out` then `Back`.
+- No tables, no `#` headings, no bare URLs.
