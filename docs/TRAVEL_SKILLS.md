@@ -16,7 +16,8 @@ Let the agent answer these kinds of request quickly and accurately, for **any us
 |---|---|---|---|
 | [`sg-bus`](../skills/sg-bus/SKILL.md) | script + instructions | LTA DataMall | `LTA_DATAMALL_KEY` (required) |
 | [`weather`](../skills/weather/SKILL.md) | script + instructions | NEA via data.gov.sg (SG); Open-Meteo (elsewhere) | `DATA_GOV_SG_API_KEY` (optional) |
-| [`itinerary`](../skills/itinerary/SKILL.md) | instructions + template | orchestrates `maps` (bundled with Hermes), `weather`, `sg-bus`, web search | none |
+| [`maps`](../skills/maps/SKILL.md) | script + instructions | Nominatim, Overpass, OSRM, TimeAPI.io (vendored from Hermes's bundled `maps`) | none |
+| [`itinerary`](../skills/itinerary/SKILL.md) | instructions + template | orchestrates `maps`, `weather`, `sg-bus`, web search | none |
 | [`flights`](../skills/flights/SKILL.md) | instructions + rubric + templates | Kiwi.com MCP `search-flight`, plus web search to cross-check | none (the MCP needs no key) |
 
 ## Layout
@@ -24,7 +25,7 @@ Let the agent answer these kinds of request quickly and accurately, for **any us
 ```
 skills/<name>/SKILL.md (+ scripts/ references/ templates/)   # published read-only to /opt/data/skills-repo
 tests/                                                        # repo-only: never published
-  support.py · test_sg_bus.py · test_weather.py · test_flights_skill.py · test_skill_frontmatter.py
+  support.py · test_maps.py · test_sg_bus.py · test_weather.py · test_flights_skill.py · test_skill_frontmatter.py
   fixtures/*.json                                             # recorded API responses, keys stripped
 ```
 
@@ -96,7 +97,7 @@ tests/                                                        # repo-only: never
    ```
    Equivalent config: `mcp_servers.kiwi: {url: https://mcp.kiwi.com, tools: {include: [search-flight]}}`. Then run `/reload-mcp` or `make restart`. It's a remote server, so there's no package version to pin. Treat its output as untrusted (SECURITY_REVIEW M5).
 3. **Publish skills:** merge the PR. `deploy-skills` publishes once `FLY_API_TOKEN` is in the `production` environment (GO_LIVE step 8). Until then, use `make sync-skills`.
-4. **Check:** `make ssh`, then `hx skills list | grep -E "sg-bus|weather|itinerary|flights"`.
+4. **Check:** `make ssh`, then `hx skills list | grep -E "maps|sg-bus|weather|itinerary|flights"`. `maps` must come from `/opt/data/skills-repo` (see DESIGN §shadowing).
 5. **Try it** in Telegram after `/new`: "next bus at 83139", "rain in Tampines later?", "plan Saturday in Tokyo, land 9am", "best flights SIN→Osaka mid-March ±3 days, 1 bag".
 6. **Optional:** set up a price watch from [price-watch-cron.md](../skills/flights/templates/price-watch-cron.md).
 
