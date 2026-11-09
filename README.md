@@ -56,7 +56,7 @@ sequenceDiagram
   GH->>CI: push to main
   CI->>CI: validate_skills.py + unittest
   CI->>Root: stream sync-skills.sh over fly ssh<br/>(REF = commit SHA, never stored on volume)
-  Root->>Root: check deploy key (root, 600, no symlink); system-only PATH
+  Root->>Root: check deploy key (root, 600, no symlink), system-only PATH
   Root->>GH: git fetch --depth 1 REF over SSH (read-only deploy key)
   Root->>Root: copy skills/ only → stage → root-owned, go-w → atomic mv
   Root-->>CI: .revision == SHA ✔
