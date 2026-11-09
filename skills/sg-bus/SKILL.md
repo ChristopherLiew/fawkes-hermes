@@ -1,7 +1,7 @@
 ---
 name: sg-bus
 description: "Singapore bus arrivals, stops and MRT alerts (LTA)."
-version: 1.1.0
+version: 1.2.0
 author: owner
 license: MIT
 platforms: [linux, macos]
@@ -65,7 +65,7 @@ Stop 01059 Bugis Stn Exit B · 14:02 SGT
 
    Never invent a stop code. Done when you have one code, up to 3 nearby stops with arrivals, or up to 5 candidates for the user to pick from.
 2. **Get the arrivals** with `arrivals <code>`. Add `--service <no>` when the user named a bus. Done when the script prints the stop header.
-3. **Reply** with the script's lines as-is (for `nearby`, nearest stop first, with its distance) (they're sized for Telegram). Mention `(sched)` times as estimates. If the list is empty, say no buses are running at that stop right now.
+3. **Reply** with a bold header built from the script's stop line, then its service lines as-is in a fenced block (for `nearby`, one header and block per stop, nearest first, with its distance). The shape is "Bus arrivals" in the `telegram-format` skill. Mention `(sched)` times as estimates. If the list is empty, say no buses are running at that stop right now.
 4. **MRT questions:** run `train-alerts`. Quote any affected lines, stations and free bus/shuttle info word for word.
 5. **Remember (optional):** when the user names a personal anchor ("my home stop is 83139"), offer to save it to memory labelled with their name or handle, e.g. "Alex: home bus stop 83139". Several people can share this gateway's memory, so never save or reuse an unlabelled stop or another user's stop.
 
