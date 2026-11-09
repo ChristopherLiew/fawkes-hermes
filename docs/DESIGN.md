@@ -237,9 +237,15 @@ hx doctor          # fix anything it flags
 **Why the absolute paths:** the image's PATH puts `/opt/data/.local/bin` (agent-owned) ahead of `/usr/bin`, and a plain `fly ssh console` inherits it. A root shell would then run an agent-planted `ls`, `runuser` or `hermes`. `make ssh` starts bash with a system-only PATH. If you use `fly ssh console` directly, run `export PATH=/usr/sbin:/usr/bin:/sbin:/bin` first (SECURITY_REVIEW H1).
 
 ### 7.2 Model
+Flash is the primary model. Pro is the fallback, and also the "deep" route the agent can pick for a subagent. Check current prices on OpenRouter.
 ```bash
-hx model     # OpenRouter → deepseek/deepseek-v4-pro (check the current price on its OpenRouter page)
+hx config set model.default deepseek/deepseek-v4-flash          # provider: openrouter
+hx config set fallback_providers '[{"provider":"openrouter","model":"deepseek/deepseek-v4-pro"}]'
+hx plugins install advanced-delegation && hx plugins enable advanced-delegation   # official catalog, pinned sha
+hx config set delegation.backends.model_map '{"options":[{"name":"fast","description":"Quick and cheap: lookups, searches, summaries, formatting, simple multi-step chores.","provider":"openrouter","model":"deepseek/deepseek-v4-flash"},{"name":"deep","description":"Slow and careful: multi-day trip planning, research synthesis, comparisons with trade-offs, debugging, anything needing long reasoning.","provider":"openrouter","model":"deepseek/deepseek-v4-pro","reasoning_effort":"high"}],"default":"fast"}'
+hx config set delegation.backend model_map                       # applies from the next /new
 ```
+Hermes has no per-message difficulty router on Telegram. "Deep" work reaches Pro only when the agent delegates a subtask and picks `deep`. For a whole chat on Pro, send `/model deepseek/deepseek-v4-pro`; `/new` goes back to Flash. To undo the delegation routes, run `/delegation default` or `hx config set delegation.backend default`.
 
 ### 7.3 Web search and tools
 ```bash
