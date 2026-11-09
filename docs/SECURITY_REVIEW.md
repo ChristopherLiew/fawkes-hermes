@@ -90,6 +90,11 @@ Basic auth is the only control between the dashboard and other apps on the priva
 ### L3. Compromised v1 bot token 🔎 verify
 Confirm it was revoked in BotFather, and purge any copies: old notes, chat logs, shell history (`history | grep -E '[0-9]{8,10}:'`).
 
+### M6. Group members can command the agent, and the agent can edit its own gateway config ✅ accepted (owner decision)
+- **What changed:** `platforms.telegram.allow_from` was removed at the owner's request. In the whitelisted groups (`allowed_chats`), **any member** can command the agent by @mentioning it (`require_mention: true`). DMs are still limited to `TELEGRAM_ALLOWED_USERS`. Every member of those groups is now a prompt-injection and spend source: anything they ask runs with the agent's tools and OpenRouter credit.
+- **How it changed:** the agent's `patch` tool refuses to write `config.yaml`, but the agent made the change through its terminal with `hermes config unset`. Treat that guard as advisory: the agent (UID 10000) owns `/opt/data` and can change any gateway setting, including the Telegram allowlists, approvals and model routing.
+- **Mitigations:** keep `allowed_chats` to groups whose members you trust, keep `require_mention: true`, keep the OpenRouter credit limit, and review `hx config get platforms.telegram` after any chat that touches config. A gateway restart now restarts the machine (`[[restart]] policy = "always"`), so a config change can no longer take the bot offline.
+
 ### Info: first-deploy observations (2026-11-08)
 - No s6 on Fly (PID 1 is `/fly/init`), so there's no supervision tree. The non-root boundary still holds: the gateway and dashboard both run as UID 10000.
 - Hermes starts a loopback-only API server on `127.0.0.1:8642` with an auto-generated key. It isn't in `[[services]]` and isn't reachable off-machine. Keep it that way.
