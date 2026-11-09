@@ -9,9 +9,17 @@ primary_region = "sin"
 # Overrides CMD only; the image ENTRYPOINT stays intact. On Fly, /fly/init is PID 1, so the image skips
 # s6-overlay ("not PID 1 ... supervised services are unavailable"), and the s6 dashboard service never starts.
 # We start it here: a restart loop in the background, with the gateway in the foreground. The image's
-# main-wrapper drops `sh` to the hermes user (UID 10000). If the gateway exits, the machine restarts.
+# main-wrapper drops `sh` to the hermes user (UID 10000). If the gateway exits, the machine restarts
+# (see [[restart]] below).
 [processes]
   app = "sh -c 'while :; do hermes dashboard --host $HERMES_DASHBOARD_HOST --port $HERMES_DASHBOARD_PORT --no-open; sleep 5; done & exec hermes gateway run'"
+
+# A gateway restart (dashboard, /restart, `hermes gateway restart`, a config change) exits 0. Fly's default
+# policy, on-failure, then leaves the machine stopped. Always restart it instead.
+[[restart]]
+  policy = "always"
+  retries = 10
+  processes = ["app"]
 
 [env]
   TZ = "Asia/Singapore"            # cron fires on the machine clock
