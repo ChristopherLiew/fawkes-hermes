@@ -176,7 +176,7 @@ adopt-pr: ## Re-apply a Dependabot PR as YOUR commit on main, push, close the PR
 skills-check: ## Validate skills/ (frontmatter, names, no symlinks) + skill tests + shellcheck the sync script
 	python3 scripts/validate_skills.py skills
 	python3 -m unittest discover -s tests
-	@if command -v shellcheck >/dev/null; then shellcheck scripts/sync-skills.sh; else echo "shellcheck not installed (brew install shellcheck); CI runs it"; fi
+	@if command -v shellcheck >/dev/null; then shellcheck scripts/sync-skills.sh scripts/require-merged-pr.sh; else echo "shellcheck not installed (brew install shellcheck); CI runs it"; fi
 
 test: ## Skill script tests against recorded fixtures (stdlib unittest, no network)
 	python3 -m unittest discover -s tests -v

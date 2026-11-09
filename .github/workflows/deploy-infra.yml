@@ -23,9 +23,27 @@ env:
   FLY_APP: fawkes-hermes
 
 jobs:
-  verify:
-    runs-on: ubuntu-latest
+  gate:
+    name: merged-PR gate
     if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Commit is a merged PR into main with green ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: scripts/require-merged-pr.sh
+
+  verify:
+    needs: gate
+    runs-on: ubuntu-latest
     outputs:
       digest: ${{ steps.pin.outputs.digest }}
     steps:

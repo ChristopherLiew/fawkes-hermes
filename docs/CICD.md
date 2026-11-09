@@ -41,8 +41,8 @@ Repo: `ChristopherLiew/fawkes-hermes` (private, GitHub Free). Fly app: `fawkes-h
 | File | Runs on | Secrets | Does |
 |---|---|---|---|
 | `ci.yml` | Every PR and push to `main` | none | Checksum-pinned gitleaks: all hooks plus a full-history scan. Validates skills, runs the skill tests (`tests`, stdlib unittest with fixtures, no keys), shellchecks the sync script, runs `make check-image` (once `fly.toml` exists), rejects `Co-Authored-By` |
-| `deploy-skills.yml` | Push to `main` touching `skills/**`, `tests/**`, the sync script or the workflow; `workflow_dispatch` | `FLY_API_TOKEN` | validate + tests → stream `sync-skills.sh` with `REF=$GITHUB_SHA` → check `.revision` matches |
-| `deploy-infra.yml` | `workflow_dispatch` only, from `main`, input `version` | `FLY_API_TOKEN` | `check-image` + typed version equals the `fly.toml` tag → `flyctl deploy --ha=false` → assert exactly one started machine running the pinned digest → advisory log check for "Connected to Telegram" |
+| `deploy-skills.yml` | (after the merged-PR gate) Push to `main` touching `skills/**`, `tests/**`, the sync script or the workflow; `workflow_dispatch` | `FLY_API_TOKEN` | validate + tests → stream `sync-skills.sh` with `REF=$GITHUB_SHA` → check `.revision` matches |
+| `deploy-infra.yml` | `workflow_dispatch` only, from `main`, input `version` | `FLY_API_TOKEN` | merged-PR gate + `check-image` + typed version equals the `fly.toml` tag → `flyctl deploy --ha=false` → assert exactly one started machine running the pinned digest → advisory log check for "Connected to Telegram" |
 | `dependabot.yml` | Monthly | none | **Alert-only** PRs for action updates. Never merge them; run `make adopt-pr PR=<n>` (sole-author policy) |
 
 Both deploy workflows share the concurrency group `fly-fawkes-hermes`, so a skills sync never overlaps a deploy. All actions are pinned to full commit SHAs. Workflows default to `permissions: contents: read` and `persist-credentials: false`. Runtime secrets (bot token, OpenRouter key, webhook secret) are never stored in GitHub.
@@ -60,7 +60,7 @@ make test-live      # optional: skill tests plus live API calls (keys from .env.
 ```
 A commit is blocked if it contains a secret, a forbidden file, an invalid skill or a `Co-Authored-By` trailer. Pushes are blocked if gitleaks finds anything in the history. Don't skip the hooks with `--no-verify`.
 
-> **No branch protection on Free.** `main` accepts direct pushes, and CI runs after the push, not before. For anything beyond a typo, work on a branch, open a PR, wait for `ci` to go green, then merge. `deploy-skills` re-validates before it publishes either way.
+> **No branch protection on Free, so the deploy workflows enforce it.** `main` still accepts direct pushes, but nothing deploys from one. Both `deploy-skills` and `deploy-infra` start with a `gate` job (`scripts/require-merged-pr.sh`) that requires `github.sha` to be the merge commit of a merged PR into `main` and all four `ci` jobs to be green on that PR's head. A direct push, a failed or missing `ci` run, or a dispatch from another branch fails the gate and nothing deploys. Work on a branch, open a PR, wait for `ci`, merge. The CLI fallbacks (`make deploy`, `make sync-skills`) run from your laptop and bypass the gate. If you rename a job in `ci.yml`, update `REQUIRED` in the script.
 
 ## Release: skills (automatic)
 

@@ -31,10 +31,28 @@ jobs:
           persist-credentials: false
       - run: python3 scripts/validate_skills.py skills
       - run: python3 -m unittest discover -s tests # stdlib only; the YAML check runs in ci.yml
-      - run: shellcheck scripts/sync-skills.sh
+      - run: shellcheck scripts/sync-skills.sh scripts/require-merged-pr.sh
+
+  gate:
+    name: merged-PR gate
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Commit is a merged PR into main with green ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.sha }}
+        run: scripts/require-merged-pr.sh
 
   deploy:
-    needs: validate
+    needs: [validate, gate]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production # FLY_API_TOKEN lives here, restricted to main
