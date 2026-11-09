@@ -4,12 +4,15 @@
 
 A personal [Hermes Agent](https://hermes-agent.nousresearch.com/docs) deployment on Fly.io: Telegram webhook plus a private dashboard, always on, Singapore region. This is a monorepo for infra, docs and the agent's **skills**.
 
-- **Go-live runbook (start here):** [docs/GO_LIVE.md](docs/GO_LIVE.md)
-- **CI/CD & release flow:** [docs/CICD.md](docs/CICD.md)
-- **Development handbook:** [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
-- **Architecture & invariants:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- **Design / reference:** [docs/DESIGN.md](docs/DESIGN.md)
-- **Security review:** [docs/SECURITY_REVIEW.md](docs/SECURITY_REVIEW.md)
+| Doc | What it covers |
+|---|---|
+| [GO_LIVE](docs/GO_LIVE.md) | First-time setup (**start here**) |
+| [CICD](docs/CICD.md) | CI/CD and release flow |
+| [DEVELOPMENT](docs/DEVELOPMENT.md) | Rules and how-to recipes |
+| [ARCHITECTURE](docs/ARCHITECTURE.md) | System map, trust boundaries, invariants |
+| [DESIGN](docs/DESIGN.md) | Reference |
+| [SECURITY_REVIEW](docs/SECURITY_REVIEW.md) | Threat model |
+| [TRAVEL_SKILLS](docs/TRAVEL_SKILLS.md) | Travel skills and their tests |
 
 ## Architecture at a glance
 
@@ -18,7 +21,7 @@ Details, trust boundaries and invariants: [docs/ARCHITECTURE.md](docs/ARCHITECTU
 ```mermaid
 flowchart LR
   user([Telegram user]) -->|HTTPS POST| edge[Fly edge :443]
-  edge -->|":8443 /tg-&lt;random&gt;<br/>secret header + allowlist"| gw
+  edge -->|"→ :8443, random path<br/>secret header + allowlist"| gw
 
   subgraph fly["Fly machine · fawkes-hermes · sin · 1 machine, always on"]
     gw["hermes gateway<br/>webhook + cron"]
@@ -33,7 +36,7 @@ flowchart LR
   end
 
   gw -->|model calls| or[OpenRouter]
-  gw -->|"skill scripts"| apis["LTA DataMall · data.gov.sg<br/>Open-Meteo"]
+  gw -->|"skill scripts"| apis["LTA DataMall · data.gov.sg · Open-Meteo"]
   gw -->|"MCP: search-flight"| kiwi[Kiwi.com]
   laptop([your laptop]) -.->|"make dashboard<br/>fly proxy"| dash
   laptop -.->|"fly secrets set"| gw
@@ -49,15 +52,15 @@ sequenceDiagram
   participant CI as deploy-skills (production env)
   participant Root as Fly machine (root via fly ssh)
   participant Agent as Hermes gateway (UID 10000)
-  Dev->>GH: merge PR touching skills/ (ci: validate + tests green)
+  Dev->>GH: merge PR (ci green)
   GH->>CI: push to main
   CI->>CI: validate_skills.py + unittest
-  CI->>Root: stream sync-skills.sh over fly ssh (REF = commit SHA, never stored on volume)
+  CI->>Root: stream sync-skills.sh over fly ssh<br/>(REF = commit SHA, never stored on volume)
   Root->>Root: check deploy key (root, 600, no symlink); system-only PATH
   Root->>GH: git fetch --depth 1 REF over SSH (read-only deploy key)
-  Root->>Root: copy skills/ only → stage → chown root, chmod go-w → atomic mv
-  Root-->>CI: /opt/data/skills-repo/.revision == SHA ✔
-  Agent->>Root: reads skills-repo via skills.external_dirs (read-only)
+  Root->>Root: copy skills/ only → stage → root-owned, go-w → atomic mv
+  Root-->>CI: .revision == SHA ✔
+  Agent->>Root: reads skills-repo (skills.external_dirs, read-only)
   Note over Agent: new sessions (/new) see the updated skills
 ```
 
@@ -120,6 +123,12 @@ make local-hx ARGS="skills list"   # any hermes CLI command (runs as the hermes 
 make local-logs | local-doctor | local-down | local-reset
 ```
 
+## Skills
+
+Catalog and authoring guide: [skills/README.md](skills/README.md).
+
+`bazi` · `flights` · `itinerary` · `research-brief` · `sg-bus` · `telegram-format` · `weather`
+
 ## Ground rules
 
 - **No secrets in this repo.** Secret names are listed in `.env.example` and `.env.local.example`; values live in Fly secrets, GitHub environment secrets and your password manager.
@@ -144,10 +153,10 @@ make local-logs | local-doctor | local-down | local-reset
 │   ├── workflows/deploy-infra.yml    # manual: fly deploy + verify (production env)
 │   └── dependabot.yml          # action-update alerts → make adopt-pr PR=<n>
 ├── tests/                      # skill script tests + recorded API fixtures (never published)
-├── docs/                       # GO_LIVE, CICD, DESIGN, SECURITY_REVIEW, TRAVEL_SKILLS
+├── docs/                       # GO_LIVE, CICD, DEVELOPMENT, ARCHITECTURE, DESIGN, SECURITY_REVIEW, TRAVEL_SKILLS
 ├── AGENTS.md · CLAUDE.md       # agent guidance (CLAUDE.md imports AGENTS.md)
+├── fly.toml                    # app config, image pinned by tag@digest
 ├── Makefile · compose.yaml
 ├── .env.example · .env.local.example
-├── .gitleaks.toml · .pre-commit-config.yaml
-└── (fly.toml)                  # add at go-live step 4
+└── .gitleaks.toml · .pre-commit-config.yaml
 ```
