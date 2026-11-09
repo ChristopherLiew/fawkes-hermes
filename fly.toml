@@ -50,5 +50,5 @@ primary_region = "sin"
 
 [[vm]]
   processes = ["app"]
-  size = "shared-cpu-1x"
+  size = "shared-cpu-2x"   # 1x stalled the event loop (GIL pressure) with gateway + dashboard in one container
   memory = "2gb"

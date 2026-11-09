@@ -140,7 +140,7 @@ primary_region = "sin"
     grace_period = "30s"
 
 [[vm]]
-  size = "shared-cpu-1x"
+  size = "shared-cpu-2x"
   memory = "2gb"
 ```
 
@@ -511,7 +511,7 @@ Check these against fly.io/pricing with the **Singapore** region selected.
 
 | Item | Monthly |
 |---|---|
-| `fawkes-hermes`: shared-cpu-1x, 2 GB, always on | about $12.70 at the Ashburn rate; Singapore is higher |
+| `fawkes-hermes`: shared-cpu-2x, 2 GB, always on | about $13.40 at the Ashburn rate; Singapore is about 1.27× (estimate, check the calculator) |
 | Volume, 3 GB | about $0.45 |
 | Shared IPv4 + IPv6 | $0 (don't allocate a dedicated IPv4) |
 | Egress (Asia-Pacific) | cents |
